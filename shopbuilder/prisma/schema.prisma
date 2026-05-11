@@ -1,0 +1,263 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── PLATFORM MODELS ───────────────────────────────────────────
+
+model Tenant {
+  id         String       @id @default(cuid())
+  subdomain  String       @unique
+  schemaName String       @unique
+  plan       PlanType     @default(BASIC)
+  status     TenantStatus @default(ACTIVE)
+  createdAt  DateTime     @default(now())
+
+  @@index([subdomain])
+}
+
+// ─── TENANT MODELS ─────────────────────────────────────────────
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String
+  role         UserRole  @default(CUSTOMER)
+  tenantId     String
+  orders       Order[]
+  cart         Cart?
+  createdAt    DateTime  @default(now())
+
+  @@index([email])
+  @@index([tenantId])
+}
+
+model Product {
+  id          String           @id @default(cuid())
+  title       String
+  description String?
+  status      ProductStatus    @default(DRAFT)
+  tenantId    String
+  variants    ProductVariant[]
+  createdAt   DateTime         @default(now())
+
+  @@index([status])
+  @@index([tenantId])
+}
+
+model ProductVariant {
+  id           String           @id @default(cuid())
+  productId    String
+  product      Product          @relation(fields: [productId], references: [id])
+  sku          String           @unique
+  price        Int
+  option1Value String?
+  option2Value String?
+  option3Value String?
+  inventory    InventoryLevel[]
+  cartItems    CartItem[]
+  orderItems   OrderItem[]
+
+  @@index([sku])
+  @@index([productId])
+}
+
+model InventoryLevel {
+  id         String            @id @default(cuid())
+  variantId  String
+  variant    ProductVariant    @relation(fields: [variantId], references: [id])
+  locationId String
+  location   WarehouseLocation @relation(fields: [locationId], references: [id])
+  available  Int               @default(0)
+  reserved   Int               @default(0)
+
+  @@unique([variantId, locationId])
+  @@index([variantId])
+}
+
+model WarehouseLocation {
+  id        String           @id @default(cuid())
+  name      String
+  city      String
+  tenantId  String
+  inventory InventoryLevel[]
+
+  @@index([tenantId])
+}
+
+model Cart {
+  id        String     @id @default(cuid())
+  userId    String     @unique
+  user      User       @relation(fields: [userId], references: [id])
+  status    CartStatus @default(ACTIVE)
+  updatedAt DateTime   @updatedAt
+  items     CartItem[]
+}
+
+model CartItem {
+  id        String         @id @default(cuid())
+  cartId    String
+  cart      Cart           @relation(fields: [cartId], references: [id])
+  variantId String
+  variant   ProductVariant @relation(fields: [variantId], references: [id])
+  quantity  Int
+
+  @@unique([cartId, variantId])
+}
+
+model Order {
+  id              String      @id @default(cuid())
+  userId          String
+  user            User        @relation(fields: [userId], references: [id])
+  tenantId        String
+  status          OrderStatus @default(PENDING)
+  totalAmount     Int
+  idempotencyKey  String      @unique
+  shippingAddress String?     // JSON string: { name, street, city, country, zip } — NEW
+  createdAt       DateTime    @default(now())
+  items           OrderItem[]
+  payment         Payment?
+
+  @@index([status])
+  @@index([createdAt])
+  @@index([tenantId])
+}
+
+model OrderItem {
+  id        String         @id @default(cuid())
+  orderId   String
+  order     Order          @relation(fields: [orderId], references: [id])
+  variantId String
+  variant   ProductVariant @relation(fields: [variantId], references: [id])
+  quantity  Int
+  price     Int
+}
+
+model Payment {
+  id             String          @id @default(cuid())
+  orderId        String          @unique
+  order          Order           @relation(fields: [orderId], references: [id])
+  provider       PaymentProvider
+  status         PaymentStatus   @default(PENDING)
+  idempotencyKey String          @unique
+  createdAt      DateTime        @default(now())
+
+  @@index([status])
+}
+
+model WebhookDelivery {
+  id           String         @id @default(cuid())
+  endpointId   String
+  eventType    String
+  payload      Json
+  status       DeliveryStatus @default(PENDING)
+  attemptCount Int            @default(0)
+  nextRetryAt  DateTime?
+  createdAt    DateTime       @default(now())
+
+  @@index([status, nextRetryAt])
+}
+
+model DiscountCode {
+  id              String       @id @default(cuid())
+  tenantId        String
+  code            String       @unique
+  type            DiscountType
+  value           Int
+  minOrderAmount  Int?
+  isStackable     Boolean      @default(false)
+  isFirstTimeOnly Boolean      @default(false)
+  usageCount      Int          @default(0)
+  maxUsage        Int?
+  expiresAt       DateTime?
+
+  @@index([code])
+  @@index([tenantId])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  tenantId   String?
+  action     String
+  entityType String
+  entityId   String
+  before     Json?
+  after      Json?
+  createdAt  DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([tenantId])
+}
+
+// ─── ENUMS ─────────────────────────────────────────────────────
+
+enum UserRole {
+  SUPER_ADMIN
+  MERCHANT
+  STAFF
+  CUSTOMER
+  DEVELOPER
+}
+
+enum ProductStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+enum CartStatus {
+  ACTIVE
+  RECOVERY_SENT
+  CONVERTED
+  ABANDONED
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  FULFILLED
+  REFUNDED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum PaymentProvider {
+  MOCK_CARD
+  MOCK_FAIL
+}
+
+enum DeliveryStatus {
+  PENDING
+  RETRYING
+  DELIVERED
+  FAILED
+}
+
+enum PlanType {
+  BASIC
+  PRO
+  ENTERPRISE
+}
+
+enum TenantStatus {
+  ACTIVE
+  SUSPENDED
+  DELETED
+}
+
+enum DiscountType {
+  PERCENTAGE
+  FIXED
+  BUY_X_GET_Y
+}

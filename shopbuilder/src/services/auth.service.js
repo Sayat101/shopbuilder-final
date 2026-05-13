@@ -73,8 +73,6 @@ async function register({ email, password, role, subdomain }) {
   // Generate verification token (24 hours)
   const verifyToken = uuidv4();
   await redis.setex(`verify:${verifyToken}`, 24 * 60 * 60, user.id);
-  const saved = await redis.get(`verify:${verifyToken}`);
-console.log('✅ REDIS CHECK - token saved:', saved ? 'YES' : 'NO', verifyToken);
 
   // Queue verification email (async — does not block response)
   await queueVerificationEmail(email, verifyToken);

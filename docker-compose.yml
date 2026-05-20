@@ -1,0 +1,74 @@
+version: '3.9'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: shopbuilder_postgres
+    environment:
+      POSTGRES_USER: shopbuilder
+      POSTGRES_PASSWORD: shopbuilder_pass
+      POSTGRES_DB: shopbuilder
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U shopbuilder']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: shopbuilder_redis
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build: ./shopbuilder
+    container_name: shopbuilder_app
+    ports:
+      - '3000:3000'
+    environment:
+      DATABASE_URL: postgresql://shopbuilder:shopbuilder_pass@postgres:5432/shopbuilder
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: super_secret_jwt_key_change_in_production
+      JWT_REFRESH_SECRET: super_secret_refresh_key_change_in_production
+      JWT_EXPIRES_IN: 15m
+      JWT_REFRESH_EXPIRES_IN: 7d
+      MOCK_PAYMENT_SECRET: mock_payment_secret_key
+      PORT: 3000
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8080}
+      NODE_ENV: production
+      RESEND_API_KEY: ${RESEND_API_KEY}
+      APP_URL: ${APP_URL:-http://localhost:3000}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: sh -c "npx prisma migrate deploy && node src/server.js"
+    restart: unless-stopped
+
+  frontend:
+    image: nginx:alpine
+    container_name: shopbuilder_frontend
+    ports:
+      - '8080:80'
+    volumes:
+      - ./frontend:/usr/share/nginx/html:ro
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - app
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:

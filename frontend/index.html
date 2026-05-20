@@ -1,0 +1,923 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ShopBuilder</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, sans-serif; background: #f5f5f5; }
+
+    .navbar {
+      background: #1a1a2e; color: white; padding: 15px 30px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .navbar h1 { font-size: 22px; }
+    .navbar button {
+      background: #e94560; color: white; border: none;
+      padding: 8px 16px; border-radius: 6px; cursor: pointer;
+    }
+
+    .container { max-width: 1100px; margin: 30px auto; padding: 0 20px; }
+
+    .tabs {
+      display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;
+    }
+    .tab {
+      padding: 10px 20px; background: white; border: 2px solid #ddd;
+      border-radius: 8px; cursor: pointer; font-size: 14px;
+    }
+    .tab.active { border-color: #1a1a2e; background: #1a1a2e; color: white; }
+
+    .panel { display: none; }
+    .panel.active { display: block; }
+
+    .card {
+      background: white; border-radius: 10px; padding: 20px;
+      margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    .card h2 { margin-bottom: 15px; font-size: 18px; color: #1a1a2e; }
+
+    .form-group { margin-bottom: 12px; }
+    .form-group label { display: block; margin-bottom: 4px; font-size: 13px; color: #555; }
+    .form-group input, .form-group select {
+      width: 100%; padding: 10px; border: 1px solid #ddd;
+      border-radius: 6px; font-size: 14px;
+    }
+
+    .btn {
+      padding: 10px 20px; border: none; border-radius: 6px;
+      cursor: pointer; font-size: 14px; margin-right: 8px; margin-top: 5px;
+    }
+    .btn-primary { background: #1a1a2e; color: white; }
+    .btn-success { background: #27ae60; color: white; }
+    .btn-danger { background: #e74c3c; color: white; }
+    .btn-warning { background: #f39c12; color: white; }
+
+    .alert {
+      padding: 12px 16px; border-radius: 6px; margin-bottom: 15px; font-size: 14px;
+    }
+    .alert-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+    .alert-error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+    .alert-info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; }
+
+    .product-card {
+      background: white; border-radius: 10px; padding: 15px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    .product-card h3 { margin-bottom: 8px; color: #1a1a2e; }
+    .product-card .price { color: #e94560; font-size: 18px; font-weight: bold; margin-bottom: 10px; }
+    .product-card .status {
+      display: inline-block; padding: 3px 10px; border-radius: 20px;
+      font-size: 12px; margin-bottom: 10px;
+    }
+    .status-ACTIVE { background: #d4edda; color: #155724; }
+    .status-DRAFT { background: #fff3cd; color: #856404; }
+    .status-ARCHIVED { background: #f8d7da; color: #721c24; }
+
+    .order-card {
+      background: white; border-radius: 10px; padding: 15px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 10px;
+    }
+    .order-status {
+      display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 12px;
+    }
+    .status-PENDING { background: #fff3cd; color: #856404; }
+    .status-PAID { background: #d4edda; color: #155724; }
+    .status-FULFILLED { background: #d1ecf1; color: #0c5460; }
+    .status-CANCELLED { background: #f8d7da; color: #721c24; }
+    .status-REFUNDED { background: #e2e3e5; color: #383d41; }
+
+    .user-info {
+      background: #1a1a2e; color: white; padding: 10px 20px;
+      border-radius: 8px; margin-bottom: 20px; font-size: 14px;
+    }
+
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 10px; text-align: left; border-bottom: 1px solid #eee; font-size: 14px; }
+    th { background: #f8f9fa; font-weight: 600; }
+
+    .badge {
+      display: inline-block; padding: 2px 8px; border-radius: 12px;
+      font-size: 11px; font-weight: bold;
+    }
+    .badge-blue { background: #d1ecf1; color: #0c5460; }
+  </style>
+</head>
+<body>
+
+<div class="navbar">
+  <h1>🛍️ ShopBuilder</h1>
+  <div id="navUser" style="display:none">
+    <span id="navEmail" style="margin-right:15px; font-size:14px;"></span>
+    <button onclick="logout()">Logout</button>
+  </div>
+</div>
+
+<div class="container">
+  <div id="alertBox"></div>
+
+  <!-- AUTH PANEL -->
+  <div id="authPanel" class="card">
+    <h2>Welcome to ShopBuilder</h2>
+    <div class="tabs" style="margin-top:15px">
+      <div class="tab active" onclick="switchAuthTab('login')">Login</div>
+      <div class="tab" onclick="switchAuthTab('register')">Register</div>
+    </div>
+
+    <!-- Login -->
+    <div id="loginForm">
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="loginEmail" placeholder="admin@shopbuilder.kz" />
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="loginPassword" placeholder="Password123!" />
+      </div>
+      <button class="btn btn-primary" onclick="login()">Login</button>
+    </div>
+
+    <!-- Register -->
+    <div id="registerForm" style="display:none">
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="regEmail" placeholder="merchant@example.com" />
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="regPassword" placeholder="Password123!" />
+      </div>
+      <div class="form-group">
+        <label>Role</label>
+        <select id="regRole">
+          <option value="CUSTOMER">Customer</option>
+          <option value="MERCHANT">Merchant</option>
+          <option value="SUPER_ADMIN">Super Admin</option>
+        </select>
+      </div>
+      <div class="form-group" id="subdomainGroup" style="display:none">
+        <label>Store Subdomain</label>
+        <input type="text" id="regSubdomain" placeholder="my-store" />
+      </div>
+      <button class="btn btn-primary" onclick="register()">Register</button>
+    </div>
+  </div>
+
+  <!-- MAIN PANEL -->
+  <div id="mainPanel" style="display:none">
+    <div class="user-info">
+      Logged in as: <strong id="userEmail"></strong> |
+      Role: <strong id="userRole"></strong> |
+      Tenant: <strong id="userTenant"></strong>
+    </div>
+
+    <div class="tabs" id="mainTabs"></div>
+
+    <!-- Products Tab -->
+    <div id="tab-products" class="panel">
+      <div class="card" id="createProductCard" style="display:none">
+        <h2>Create Product</h2>
+        <div class="form-group">
+          <label>Title</label>
+          <input type="text" id="productTitle" placeholder="Winter Jacket" />
+        </div>
+        <div class="form-group">
+          <label>Description</label>
+          <input type="text" id="productDesc" placeholder="Warm jacket for cold weather" />
+        </div>
+        <div class="form-group">
+          <label>Price (tiyn)</label>
+          <input type="number" id="productPrice" placeholder="25000" />
+        </div>
+        <div class="form-group">
+          <label>Colors (comma separated)</label>
+          <input type="text" id="productColors" placeholder="Red,Blue,Black" />
+        </div>
+        <div class="form-group">
+          <label>Sizes (comma separated)</label>
+          <input type="text" id="productSizes" placeholder="S,M,L,XL" />
+        </div>
+        <button class="btn btn-success" onclick="createProduct()">Create Product + Variants</button>
+      </div>
+
+      <div class="card">
+        <h2>Products <button class="btn btn-primary" style="float:right;font-size:12px" onclick="loadProducts()">Refresh</button></h2>
+        <div id="productsList" class="grid"></div>
+      </div>
+    </div>
+
+    <!-- Orders Tab -->
+    <div id="tab-orders" class="panel">
+      <div class="card">
+        <h2>Orders <button class="btn btn-primary" style="float:right;font-size:12px" onclick="loadOrders()">Refresh</button></h2>
+        <div id="ordersList"></div>
+      </div>
+    </div>
+
+    <!-- Cart Tab -->
+    <div id="tab-cart" class="panel">
+      <div class="card">
+        <h2>My Cart</h2>
+        <div id="cartContent"></div>
+        <div style="margin-top:15px" id="checkoutSection" style="display:none">
+          <h3 style="margin-bottom:10px">Shipping Address</h3>
+          <div class="form-group">
+            <label>Full Name</label>
+            <input type="text" id="shipName" placeholder="John Doe" />
+          </div>
+          <div class="form-group">
+            <label>Street</label>
+            <input type="text" id="shipStreet" placeholder="Abay Ave 10" />
+          </div>
+          <div class="form-group">
+            <label>City</label>
+            <input type="text" id="shipCity" placeholder="Almaty" />
+          </div>
+          <button class="btn btn-success" onclick="placeOrder()">Place Order</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Analytics Tab -->
+    <div id="tab-analytics" class="panel">
+      <div class="card">
+        <h2>Store Analytics</h2>
+        <button class="btn btn-primary" onclick="loadAnalytics()">Load Analytics</button>
+        <div id="analyticsContent" style="margin-top:15px"></div>
+      </div>
+    </div>
+
+    <!-- Discounts Tab -->
+    <div id="tab-discounts" class="panel">
+      <div class="card">
+        <h2>Create Discount Code</h2>
+        <div class="form-group">
+          <label>Code</label>
+          <input type="text" id="discountCode" placeholder="SAVE20" />
+        </div>
+        <div class="form-group">
+          <label>Type</label>
+          <select id="discountType">
+            <option value="PERCENTAGE">Percentage</option>
+            <option value="FIXED">Fixed Amount</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Value (% or tiyn)</label>
+          <input type="number" id="discountValue" placeholder="20" />
+        </div>
+        <div class="form-group">
+          <label>Max Usage</label>
+          <input type="number" id="discountMaxUsage" placeholder="100" />
+        </div>
+        <button class="btn btn-success" onclick="createDiscount()">Create Discount</button>
+      </div>
+      <div class="card">
+        <h2>Discount Codes <button class="btn btn-primary" style="float:right;font-size:12px" onclick="loadDiscounts()">Refresh</button></h2>
+        <div id="discountsList"></div>
+      </div>
+    </div>
+
+    <!-- Storefront Tab -->
+    <div id="tab-storefront" class="panel">
+      <div class="card">
+        <h2>Public Storefront Preview</h2>
+        <div class="form-group">
+          <label>Store Subdomain</label>
+          <input type="text" id="storefrontSubdomain" placeholder="aigerim-bags" />
+        </div>
+        <button class="btn btn-primary" onclick="loadStorefront()">View Store</button>
+        <div id="storefrontContent" style="margin-top:15px" class="grid"></div>
+      </div>
+    </div>
+
+    <!-- Webhooks Tab -->
+    <div id="tab-webhooks" class="panel">
+      <div class="card">
+        <h2>Register Webhook Endpoint</h2>
+        <div class="form-group">
+          <label>Endpoint URL</label>
+          <input type="text" id="webhookUrl" placeholder="https://myapp.com/webhooks" />
+        </div>
+        <button class="btn btn-success" onclick="createWebhook()">Register Endpoint</button>
+      </div>
+      <div class="card">
+        <h2>Webhook Endpoints <button class="btn btn-primary" style="float:right;font-size:12px" onclick="loadWebhooks()">Refresh</button></h2>
+        <div id="webhooksList"></div>
+      </div>
+    </div>
+
+    <!-- Tenants Tab (SUPER_ADMIN) -->
+    <div id="tab-tenants" class="panel">
+      <div class="card">
+        <h2>All Tenants <button class="btn btn-primary" style="float:right;font-size:12px" onclick="loadTenants()">Refresh</button></h2>
+        <div id="tenantsList"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const API = 'http://localhost:3000';
+  let token = localStorage.getItem('token') || '';
+  let currentUser = JSON.parse(localStorage.getItem('user') || 'null');
+
+  // ── Helpers ──────────────────────────────────────────────────
+
+  function showAlert(msg, type = 'info') {
+    const box = document.getElementById('alertBox');
+    box.innerHTML = `<div class="alert alert-${type}">${msg}</div>`;
+    setTimeout(() => box.innerHTML = '', 4000);
+  }
+
+  async function api(method, path, body) {
+    const opts = {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+    };
+    if (token) opts.headers['Authorization'] = `Bearer ${token}`;
+    if (body) opts.body = JSON.stringify(body);
+
+    const res = await fetch(API + path, opts);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || data.error || 'Request failed');
+    return data;
+  }
+
+  // ── Auth ─────────────────────────────────────────────────────
+
+  function switchAuthTab(tab) {
+    document.querySelectorAll('#authPanel .tab').forEach(t => t.classList.remove('active'));
+    event.target.classList.add('active');
+    document.getElementById('loginForm').style.display = tab === 'login' ? 'block' : 'none';
+    document.getElementById('registerForm').style.display = tab === 'register' ? 'block' : 'none';
+  }
+
+  document.getElementById('regRole').addEventListener('change', function() {
+    document.getElementById('subdomainGroup').style.display =
+      this.value === 'MERCHANT' ? 'block' : 'none';
+  });
+
+  async function login() {
+    try {
+      const data = await api('POST', '/auth/login', {
+        email: document.getElementById('loginEmail').value,
+        password: document.getElementById('loginPassword').value,
+      });
+      token = data.accessToken;
+      currentUser = data.user;
+      localStorage.setItem('token', token);
+      localStorage.setItem('user', JSON.stringify(currentUser));
+      showAlert('Logged in successfully!', 'success');
+      renderMainPanel();
+    } catch (err) {
+      showAlert(err.message, 'error');
+    }
+  }
+
+  async function register() {
+    try {
+      const role = document.getElementById('regRole').value;
+      const body = {
+        email: document.getElementById('regEmail').value,
+        password: document.getElementById('regPassword').value,
+        role,
+      };
+      if (role === 'MERCHANT') {
+        body.subdomain = document.getElementById('regSubdomain').value;
+      }
+      await api('POST', '/auth/register', body);
+      showAlert('Registered! Check your email to verify your account.', 'success');
+    } catch (err) {
+      showAlert(err.message, 'error');
+    }
+  }
+
+  function logout() {
+    token = '';
+    currentUser = null;
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    document.getElementById('mainPanel').style.display = 'none';
+    document.getElementById('authPanel').style.display = 'block';
+    document.getElementById('navUser').style.display = 'none';
+  }
+
+  // ── Main Panel ────────────────────────────────────────────────
+
+  function renderMainPanel() {
+    document.getElementById('authPanel').style.display = 'none';
+    document.getElementById('mainPanel').style.display = 'block';
+    document.getElementById('navUser').style.display = 'block';
+    document.getElementById('navEmail').textContent = currentUser.email;
+    document.getElementById('userEmail').textContent = currentUser.email;
+    document.getElementById('userRole').textContent = currentUser.role;
+    document.getElementById('userTenant').textContent = currentUser.tenantId || 'platform';
+
+    const role = currentUser.role;
+    const tabs = [];
+
+    if (role === 'MERCHANT' || role === 'SUPER_ADMIN') {
+      tabs.push({ id: 'products', label: '📦 Products' });
+      tabs.push({ id: 'orders', label: '🧾 Orders' });
+      tabs.push({ id: 'analytics', label: '📊 Analytics' });
+      tabs.push({ id: 'discounts', label: '🏷️ Discounts' });
+      tabs.push({ id: 'webhooks', label: '🔗 Webhooks' });
+    }
+
+    if (role === 'CUSTOMER') {
+      tabs.push({ id: 'storefront', label: '🛍️ Browse Store' });
+      tabs.push({ id: 'cart', label: '🛒 My Cart' });
+      tabs.push({ id: 'orders', label: '📋 My Orders' });
+    }
+
+    if (role === 'SUPER_ADMIN') {
+      tabs.push({ id: 'tenants', label: '🏢 Tenants' });
+    }
+
+    const tabsHtml = tabs.map((t, i) =>
+      `<div class="tab ${i === 0 ? 'active' : ''}" onclick="switchTab('${t.id}', this)">${t.label}</div>`
+    ).join('');
+
+    document.getElementById('mainTabs').innerHTML = tabsHtml;
+
+    // Показываем create product только для merchant
+    if (role === 'MERCHANT' || role === 'SUPER_ADMIN') {
+      document.getElementById('createProductCard').style.display = 'block';
+    }
+
+    switchTab(tabs[0].id, document.querySelector('.tab'));
+
+    // Автозагрузка данных
+    if (role === 'MERCHANT' || role === 'SUPER_ADMIN') loadProducts();
+    if (role === 'CUSTOMER') loadCart();
+  }
+
+  function switchTab(tabId, el) {
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.getElementById('tab-' + tabId).classList.add('active');
+    if (el) el.classList.add('active');
+  }
+
+  // ── Products ──────────────────────────────────────────────────
+
+  async function createProduct() {
+    try {
+      const colors = document.getElementById('productColors').value.split(',').map(s => s.trim()).filter(Boolean);
+      const sizes = document.getElementById('productSizes').value.split(',').map(s => s.trim()).filter(Boolean);
+
+      const data = await api('POST', '/products', {
+        title: document.getElementById('productTitle').value,
+        description: document.getElementById('productDesc').value,
+        price: parseInt(document.getElementById('productPrice').value),
+        options: { colors, sizes },
+      });
+
+      showAlert(`Product created with ${data.product.variants.length} variants!`, 'success');
+      loadProducts();
+    } catch (err) {
+      showAlert(err.message, 'error');
+    }
+  }
+
+  async function loadProducts() {
+    try {
+      const data = await api('GET', '/products?limit=20');
+      const list = document.getElementById('productsList');
+
+      if (!data.data || data.data.length === 0) {
+        list.innerHTML = '<p style="color:#888">No products yet.</p>';
+        return;
+      }
+
+      list.innerHTML = data.data.map(p => `
+        <div class="product-card">
+          <h3>${p.title}</h3>
+          <div class="price">${p.variants?.[0]?.price ? (p.variants[0].price / 100).toFixed(0) + ' ₸' : 'N/A'}</div>
+          <span class="status status-${p.status}">${p.status}</span>
+          <p style="font-size:12px;color:#888;margin-bottom:10px">${p.variants?.length || 0} variants</p>
+          ${p.status === 'DRAFT' ? `<button class="btn btn-success" style="font-size:12px" onclick="publishProduct('${p.id}')">Publish</button>` : ''}
+          <button class="btn btn-danger" style="font-size:12px" onclick="archiveProduct('${p.id}')">Archive</button>
+        </div>
+      `).join('');
+    } catch (err) {
+      showAlert(err.message, 'error');
+    }
+  }
+
+  async function publishProduct(id) {
+    try {
+      await api('PATCH', `/products/${id}/status`, { status: 'ACTIVE' });
+      showAlert('Product published!', 'success');
+      loadProducts();
+    } catch (err) {
+      showAlert(err.message, 'error');
+    }
+  }
+
+  async function archiveProduct(id) {
+    try {
+      await api('DELETE', `/products/${id}`);
+      showAlert('Product archived!', 'success');
+      loadProducts();
+    } catch (err) {
+      showAlert(err.message, 'error');
+    }
+  }
+
+  // ── Orders ────────────────────────────────────────────────────
+
+  async function loadOrders() {
+    try {
+      const role = currentUser.role;
+      const endpoint = (role === 'MERCHANT' || role === 'SUPER_ADMIN')
+        ? '/orders/all' : '/orders';
+      const data = await api('GET', endpoint + '?limit=20');
+      const list = document.getElementById('ordersList');
+
+      if (!data.data || data.data.length === 0) {
+        list.innerHTML = '<p style="color:#888">No orders yet.</p>';
+        return;
+      }
+
+      list.innerHTML = data.data.map(o => `
+        <div class="order-card">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div>
+              <strong>#${o.id.slice(-8).toUpperCase()}</strong>
+              <span class="order-status status-${o.status}" style="margin-left:10px">${o.status}</span>
+            </div>
+            <div style="font-weight:bold;color:#e94560">${(o.totalAmount/100).toFixed(0)} ₸</div>
+          </div>
+          <div style="font-size:12px;color:#888;margin-top:5px">${new Date(o.createdAt).toLocaleString()}</div>
+          <div style="margin-top:10px">
+            ${role === 'MERCHANT' && o.status === 'PENDING' ?
+              `<button class="btn btn-success" style="font-size:12px" onclick="updateOrderStatus('${o.id}','PAID')">Mark Paid</button>` : ''}
+            ${role === 'MERCHANT' && o.status === 'PAID' ?
+              `<button class="btn btn-primary" style="font-size:12px" onclick="updateOrderStatus('${o.id}','FULFILLED')">Mark Fulfilled</button>` : ''}
+            ${role === 'CUSTOMER' && ['PAID','FULFILLED'].includes(o.status) ?
+              `<button class="btn btn-warning" style="font-size:12px" onclick="refundOrder('${o.id}')">Request Refund</button>` : ''}
+          </div>
+        </div>
+      `).join('');
+    } catch (err) {
+      showAlert(err.message, 'error');
+    }
+  }
+
+  async function updateOrderStatus(id, status) {
+    try {
+      await api('PATCH', `/orders/${id}/status`, { status });
+      showAlert(`Order updated to ${status}!`, 'success');
+      loadOrders();
+    } catch (err) {
+      showAlert(err.message, 'error');
+    }
+  }
+
+  async function refundOrder(id) {
+    try {
+      await api('POST', `/orders/${id}/refund`);
+      showAlert('Refund processed!', 'success');
+      loadOrders();
+    } catch (err) {
+      showAlert(err.message, 'error');
+    }
+  }
+
+  // ── Cart ──────────────────────────────────────────────────────
+
+  async function loadCart() {
+    try {
+      const data = await api('GET', '/cart');
+      const cart = data.cart || data;
+      const content = document.getElementById('cartContent');
+
+      if (!cart.items || cart.items.length === 0) {
+        content.innerHTML = '<p style="color:#888">Your cart is empty. Browse the store to add items.</p>';
+        document.getElementById('checkoutSection').style.display = 'none';
+        return;
+      }
+
+      content.innerHTML = `
+        <table>
+          <tr><th>Product</th><th>SKU</th><th>Qty</th><th>Price</th><th></th></tr>
+          ${cart.items.map(item => `
+            <tr>
+              <td>${item.variant?.product?.title || 'Product'}</td>
+              <td><span class="badge badge-blue">${item.variant?.sku || ''}</span></td>
+              <td>${item.quantity}</td>
+              <td>${((item.variant?.price || 0)/100).toFixed(0)} ₸</td>
+              <td><button class="btn btn-danger" style="font-size:11px" onclick="removeFromCart('${item.variantId}')">Remove</button></td>
+            </tr>
+          `).join('')}
+        </table>
+        <p style="margin-top:10px;font-weight:bold">
+          Total: ${cart.items.reduce((s,i) => s + (i.variant?.price||0)*i.quantity, 0)/100} ₸
+        </p>
+      `;
+      document.getElementById('checkoutSection').style.display = 'block';
+    } catch (err) {
+      showAlert(err.message, 'error');
+    }
+  }
+
+  async function removeFromCart(variantId) {
+    try {
+      await api('DELETE', `/cart/items/${variantId}`);
+      showAlert('Item removed!', 'success');
+      loadCart();
+    } catch (err) {
+      showAlert(err.message, 'error');
+    }
+  }
+
+  async function placeOrder() {
+    try {
+      const data = await api('POST', '/orders', {
+        tenantId: document.getElementById('storefrontSubdomain').dataset?.tenantId || currentUser.tenantId,
+        shippingAddress: {
+          name: document.getElementById('shipName').value,
+          street: document.getElementById('shipStreet').value,
+          city: document.getElementById('shipCity').value,
+          country: 'KZ',
+          zip: '050000',
+        },
+      });
+      showAlert(`Order #${data.order.id.slice(-8).toUpperCase()} placed!`, 'success');
+      loadCart();
+    } catch (err) {
+      showAlert(err.message, 'error');
+    }
+  }
+
+  // ── Analytics ─────────────────────────────────────────────────
+
+  async function loadAnalytics() {
+    try {
+      const [overview, inventory] = await Promise.all([
+        api('GET', '/analytics/overview'),
+        api('GET', '/analytics/inventory'),
+      ]);
+
+      document.getElementById('analyticsContent').innerHTML = `
+        <div class="grid" style="margin-bottom:20px">
+          <div class="card" style="text-align:center">
+            <h2 style="font-size:36px;color:#1a1a2e">${overview.overview.totalOrders}</h2>
+            <p style="color:#888">Total Orders</p>
+          </div>
+          <div class="card" style="text-align:center">
+            <h2 style="font-size:36px;color:#27ae60">${(overview.overview.totalRevenue/100).toFixed(0)} ₸</h2>
+            <p style="color:#888">Total Revenue</p>
+          </div>
+          <div class="card" style="text-align:center">
+            <h2 style="font-size:36px;color:#f39c12">${overview.overview.pendingOrders}</h2>
+            <p style="color:#888">Pending Orders</p>
+          </div>
+          <div class="card" style="text-align:center">
+            <h2 style="font-size:36px;color:#3498db">${overview.overview.totalProducts}</h2>
+            <p style="color:#888">Active Products</p>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>🔴 Low Stock Items (≤10 units)</h2>
+          ${inventory.lowStock.length === 0 ? '<p style="color:#888">All stock levels are good!</p>' :
+            `<table>
+              <tr><th>Product</th><th>SKU</th><th>Available</th><th>Reserved</th><th>Location</th></tr>
+              ${inventory.lowStock.map(i => `
+                <tr>
+                  <td>${i.productTitle}</td>
+                  <td><span class="badge badge-blue">${i.sku}</span></td>
+                  <td style="color:#e74c3c;font-weight:bold">${i.available}</td>
+                  <td>${i.reserved}</td>
+                  <td>${i.location}</td>
+                </tr>
+              `).join('')}
+            </table>`
+          }
+        </div>
+
+        <div class="card" style="margin-top:15px">
+          <h2>🏆 Top Products</h2>
+          ${overview.topProducts.length === 0 ? '<p style="color:#888">No sales yet.</p>' :
+            `<table>
+              <tr><th>Product</th><th>SKU</th><th>Total Sold</th></tr>
+              ${overview.topProducts.map(p => `
+                <tr>
+                  <td>${p.productTitle || 'N/A'}</td>
+                  <td><span class="badge badge-blue">${p.sku || 'N/A'}</span></td>
+                  <td><strong>${p.totalSold}</strong></td>
+                </tr>
+              `).join('')}
+            </table>`
+          }
+        </div>
+      `;
+    } catch (err) {
+      showAlert(err.message, 'error');
+    }
+  }
+
+  // ── Discounts ─────────────────────────────────────────────────
+
+  async function createDiscount() {
+    try {
+      await api('POST', '/discounts', {
+        code: document.getElementById('discountCode').value,
+        type: document.getElementById('discountType').value,
+        value: parseInt(document.getElementById('discountValue').value),
+        maxUsage: parseInt(document.getElementById('discountMaxUsage').value) || null,
+      });
+      showAlert('Discount code created!', 'success');
+      loadDiscounts();
+    } catch (err) {
+      showAlert(err.message, 'error');
+    }
+  }
+
+  async function loadDiscounts() {
+    try {
+      const data = await api('GET', '/discounts');
+      const list = document.getElementById('discountsList');
+
+      if (!data.discounts || data.discounts.length === 0) {
+        list.innerHTML = '<p style="color:#888">No discount codes yet.</p>';
+        return;
+      }
+
+      list.innerHTML = `
+        <table>
+          <tr><th>Code</th><th>Type</th><th>Value</th><th>Used</th><th>Max</th><th></th></tr>
+          ${data.discounts.map(d => `
+            <tr>
+              <td><strong>${d.code}</strong></td>
+              <td>${d.type}</td>
+              <td>${d.type === 'PERCENTAGE' ? d.value + '%' : d.value/100 + ' ₸'}</td>
+              <td>${d.usageCount}</td>
+              <td>${d.maxUsage || '∞'}</td>
+              <td><button class="btn btn-danger" style="font-size:11px" onclick="deleteDiscount('${d.id}')">Delete</button></td>
+            </tr>
+          `).join('')}
+        </table>
+      `;
+    } catch (err) {
+      showAlert(err.message, 'error');
+    }
+  }
+
+  async function deleteDiscount(id) {
+    try {
+      await api('DELETE', `/discounts/${id}`);
+      showAlert('Discount deleted!', 'success');
+      loadDiscounts();
+    } catch (err) {
+      showAlert(err.message, 'error');
+    }
+  }
+
+  // ── Storefront ────────────────────────────────────────────────
+
+  async function loadStorefront() {
+    try {
+      const subdomain = document.getElementById('storefrontSubdomain').value;
+      const data = await api('GET', `/storefront/${subdomain}/products?limit=20`);
+      const content = document.getElementById('storefrontContent');
+
+      if (!data.data || data.data.length === 0) {
+        content.innerHTML = '<p style="color:#888">No products in this store.</p>';
+        return;
+      }
+
+      content.innerHTML = data.data.map(p => `
+        <div class="product-card">
+          <h3>${p.title}</h3>
+          <div class="price">${p.variants?.[0]?.price ? (p.variants[0].price/100).toFixed(0) + ' ₸' : 'N/A'}</div>
+          <p style="font-size:12px;color:#888;margin-bottom:10px">${p.variants?.length || 0} variants available</p>
+          ${p.variants?.[0] ? `
+            <button class="btn btn-primary" style="font-size:12px"
+              onclick="addToCart('${p.variants[0].id}')">Add to Cart</button>
+          ` : ''}
+        </div>
+      `).join('');
+    } catch (err) {
+      showAlert(err.message, 'error');
+    }
+  }
+
+  async function addToCart(variantId) {
+    try {
+      await api('POST', '/cart/items', { variantId, quantity: 1 });
+      showAlert('Added to cart!', 'success');
+    } catch (err) {
+      showAlert(err.message, 'error');
+    }
+  }
+
+  // ── Webhooks ──────────────────────────────────────────────────
+
+  async function createWebhook() {
+    try {
+      const data = await api('POST', '/webhooks/endpoints', {
+        url: document.getElementById('webhookUrl').value,
+        events: ['order.created', 'order.paid', 'order.fulfilled'],
+      });
+      showAlert(`Webhook registered! Secret: ${data.secret}`, 'success');
+      loadWebhooks();
+    } catch (err) {
+      showAlert(err.message, 'error');
+    }
+  }
+
+  async function loadWebhooks() {
+    try {
+      const data = await api('GET', '/webhooks/endpoints');
+      const list = document.getElementById('webhooksList');
+
+      if (!data.endpoints || data.endpoints.length === 0) {
+        list.innerHTML = '<p style="color:#888">No webhook endpoints registered.</p>';
+        return;
+      }
+
+      list.innerHTML = `
+        <table>
+          <tr><th>URL</th><th>Events</th><th>Active</th><th></th></tr>
+          ${data.endpoints.map(e => `
+            <tr>
+              <td>${e.url}</td>
+              <td>${e.events.join(', ')}</td>
+              <td>${e.isActive ? '✅' : '❌'}</td>
+              <td>
+                <button class="btn btn-primary" style="font-size:11px" onclick="testWebhook('${e.id}')">Test</button>
+                <button class="btn btn-danger" style="font-size:11px" onclick="deleteWebhook('${e.id}')">Delete</button>
+              </td>
+            </tr>
+          `).join('')}
+        </table>
+      `;
+    } catch (err) {
+      showAlert(err.message, 'error');
+    }
+  }
+
+  async function testWebhook(id) {
+    try {
+      await api('POST', `/webhooks/endpoints/${id}/test`);
+      showAlert('Test webhook sent!', 'success');
+    } catch (err) {
+      showAlert(err.message, 'error');
+    }
+  }
+
+  async function deleteWebhook(id) {
+    try {
+      await api('DELETE', `/webhooks/endpoints/${id}`);
+      showAlert('Webhook deleted!', 'success');
+      loadWebhooks();
+    } catch (err) {
+      showAlert(err.message, 'error');
+    }
+  }
+
+  // ── Tenants ───────────────────────────────────────────────────
+
+  async function loadTenants() {
+    try {
+      const data = await api('GET', '/tenants?limit=20');
+      const list = document.getElementById('tenantsList');
+
+      if (!data.data || data.data.length === 0) {
+        list.innerHTML = '<p style="color:#888">No tenants yet.</p>';
+        return;
+      }
+
+      list.innerHTML = `
+        <table>
+          <tr><th>Subdomain</th><th>Plan</th><th>Status</th><th>Created</th></tr>
+          ${data.data.map(t => `
+            <tr>
+              <td><strong>${t.subdomain}</strong></td>
+              <td><span class="badge badge-blue">${t.plan}</span></td>
+              <td><span class="order-status status-${t.status === 'ACTIVE' ? 'PAID' : 'CANCELLED'}">${t.status}</span></td>
+              <td>${new Date(t.createdAt).toLocaleDateString()}</td>
+            </tr>
+          `).join('')}
+        </table>
+      `;
+    } catch (err) {
+      showAlert(err.message, 'error');
+    }
+  }
+
+  // ── Init ──────────────────────────────────────────────────────
+
+  if (token && currentUser) {
+    renderMainPanel();
+  }
+</script>
+</body>
+</html>

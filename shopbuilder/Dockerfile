@@ -5,9 +5,12 @@ RUN apk add --no-cache openssl
 WORKDIR /app
 
 COPY package*.json ./
+
 RUN npm install
+
 COPY prisma ./prisma
-RUN npx prisma generate
+
+RUN npx prisma generate --schema=./prisma/schema.prisma
 
 COPY . .
 

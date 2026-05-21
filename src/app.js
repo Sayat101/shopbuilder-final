@@ -19,6 +19,8 @@ const storefrontRoutes = require('./routes/storefront.routes');
 const abandonedCartRoutes = require('./routes/abandonedCart.routes');
 const app = express();
 
+require('./workers/email.worker');
+require('./workers/webhook.worker');
 // ─── CORS ─────────────────────────────────────────────────────
 const corsOrigins = process.env.CORS_ORIGINS
   ? process.env.CORS_ORIGINS.split(',')

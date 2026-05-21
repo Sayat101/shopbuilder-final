@@ -139,7 +139,29 @@
       </div>
       <button class="btn btn-primary" onclick="login()">Login</button>
     </div>
+    <div style="margin-top:10px">
+  <a href="#" onclick="showForgotPassword()" style="font-size:13px;color:#1a1a2e;">Forgot password?</a>
+</div>
 
+<!-- Forgot Password Form -->
+<div id="forgotForm" style="display:none;margin-top:15px;border-top:1px solid #eee;padding-top:15px">
+  <h3 style="margin-bottom:10px;font-size:15px">Reset Password</h3>
+  <div class="form-group">
+    <label>Email</label>
+    <input type="email" id="forgotEmail" placeholder="your@email.com" />
+  </div>
+  <button class="btn btn-primary" onclick="forgotPassword()">Send Reset Link</button>
+</div>
+
+<!-- Reset Password Form -->
+<div id="resetForm" style="display:none;margin-top:15px;border-top:1px solid #eee;padding-top:15px">
+  <h3 style="margin-bottom:10px;font-size:15px">Enter New Password</h3>
+  <div class="form-group">
+    <label>New Password</label>
+    <input type="password" id="newPassword" placeholder="NewPassword123!" />
+  </div>
+  <button class="btn btn-primary" onclick="resetPassword()">Reset Password</button>
+</div>
     <!-- Register -->
     <div id="registerForm" style="display:none">
       <div class="form-group">
@@ -321,6 +343,27 @@
 
 <script>
   const API = 'https://shopbuilder.onrender.com';
+  // Auto-handle email verification from link
+const urlParams = new URLSearchParams(window.location.search);
+const verifyToken = urlParams.get('token');
+const resetToken = urlParams.get('reset_token');
+
+if (verifyToken) {
+  fetch(API + '/auth/verify-email', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token: verifyToken })
+  })
+  .then(r => r.json())
+  .then(data => {
+    document.getElementById('alertBox').innerHTML =
+      `<div class="alert alert-success">✅ ${data.message || 'Email verified! You can now login.'}</div>`;
+  })
+  .catch(() => {
+    document.getElementById('alertBox').innerHTML =
+      `<div class="alert alert-error">❌ Verification failed. Link may be expired.</div>`;
+  });
+}
   let token = localStorage.getItem('token') || '';
   let currentUser = JSON.parse(localStorage.getItem('user') || 'null');
 
@@ -418,6 +461,39 @@
 
     const role = currentUser.role;
     const tabs = [];
+  function showForgotPassword() {
+  document.getElementById('forgotForm').style.display = 'block';
+}
+
+async function forgotPassword() {
+  try {
+    await api('POST', '/auth/forgot-password', {
+      email: document.getElementById('forgotEmail').value
+    });
+    showAlert('Reset link sent! Check your email.', 'success');
+  } catch(err) {
+    showAlert(err.message, 'error');
+  }
+}
+
+async function resetPassword() {
+  try {
+    const token = new URLSearchParams(window.location.search).get('reset_token');
+    await api('POST', '/auth/reset-password', {
+      token,
+      newPassword: document.getElementById('newPassword').value
+    });
+    showAlert('Password reset! You can now login.', 'success');
+    document.getElementById('resetForm').style.display = 'none';
+  } catch(err) {
+    showAlert(err.message, 'error');
+  }
+}
+
+// Show reset form if reset_token in URL
+if (resetToken) {
+  document.getElementById('resetForm').style.display = 'block';
+}
 
     if (role === 'MERCHANT' || role === 'SUPER_ADMIN') {
       tabs.push({ id: 'products', label: '📦 Products' });
@@ -529,7 +605,7 @@
   }
 
   // ── Orders ────────────────────────────────────────────────────
-
+  
   async function loadOrders() {
     try {
       const role = currentUser.role;
@@ -558,6 +634,8 @@
               `<button class="btn btn-success" style="font-size:12px" onclick="updateOrderStatus('${o.id}','PAID')">Mark Paid</button>` : ''}
             ${role === 'MERCHANT' && o.status === 'PAID' ?
               `<button class="btn btn-primary" style="font-size:12px" onclick="updateOrderStatus('${o.id}','FULFILLED')">Mark Fulfilled</button>` : ''}
+            ${role === 'CUSTOMER' && o.status === 'PENDING' ?
+              `<button class="btn btn-success" style="font-size:12px" onclick="payOrder('${o.id}', ${o.totalAmount})">💳 Pay Now</button>` : ''}
             ${role === 'CUSTOMER' && ['PAID','FULFILLED'].includes(o.status) ?
               `<button class="btn btn-warning" style="font-size:12px" onclick="refundOrder('${o.id}')">Request Refund</button>` : ''}
           </div>
@@ -567,6 +645,20 @@
       showAlert(err.message, 'error');
     }
   }
+  async function payOrder(orderId, amount) {
+  try {
+    const data = await api('POST', '/payments/checkout', {
+      orderId,
+      amount,
+      method: 'MOCK_CARD',
+      idempotencyKey: 'pay-' + orderId + '-' + Date.now(),
+    });
+    showAlert(`Payment successful! Status: ${data.status}`, 'success');
+    loadOrders();
+  } catch(err) {
+    showAlert(err.message, 'error');
+  }
+}
 
   async function updateOrderStatus(id, status) {
     try {

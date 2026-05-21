@@ -9,7 +9,8 @@ const connection = {
   port: parseInt(new URL(env.REDIS_URL).port) || 6379,
   maxRetriesPerRequest: null,
   enableReadyCheck: false,
-  tls: env.REDIS_URL.startsWith('rediss://') ? { rejectUnauthorized: false } : undefined,
+  lazyConnect: true,
+  tls: { rejectUnauthorized: false },
 };
 
 const webhookQueue = new Queue('webhooks', { connection });

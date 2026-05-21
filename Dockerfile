@@ -21,4 +21,4 @@ ENV MOCK_PAYMENT_SECRET=mockpaymentsecret2024
 ENV APP_URL=https://sayat101-shopbuilder-app.kazi.rocks
 EXPOSE 3000
 
-CMD ["node", "src/server.js"]
+CMD ["sh", "-c", "npx prisma migrate deploy && node src/server.js"]

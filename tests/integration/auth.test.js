@@ -10,14 +10,16 @@ describe('Auth Endpoints', () => {
   let accessToken;
   let refreshToken;
 
-  describe('POST /auth/register', () => {
+  
+  
+  describe('POST /auth/register', () => { 
     test('registers a new user successfully', async () => {
       const res = await request(app).post('/auth/register').send({
         email: testEmail,
         password: testPassword,
         role: 'MERCHANT',
       });
-
+      
       expect(res.status).toBe(201);
       expect(res.body.user.email).toBe(testEmail);
       // Password must never be in response
@@ -50,6 +52,14 @@ describe('Auth Endpoints', () => {
   });
 
   describe('POST /auth/login', () => {
+    beforeAll(async () => {
+      const { prisma } = require('../../src/config/database');
+      await prisma.user.update({
+        where: { email: testEmail },
+        data: { emailVerified: true },
+      });
+    });  
+
     test('logs in successfully', async () => {
       const res = await request(app).post('/auth/login').send({
         email: testEmail,
@@ -121,13 +131,19 @@ describe('Auth Endpoints', () => {
     let customerToken;
 
     beforeAll(async () => {
-      // Register a customer
-      const res = await request(app).post('/auth/register').send({
-        email: `customer_${Date.now()}@test.kz`,
+      const email = `customer_${Date.now()}@test.kz`;
+      await request(app).post('/auth/register').send({
+        email,
         password: 'SecurePass123!',
         role: 'CUSTOMER',
       });
-      customerToken = res.body.accessToken;
+      const { prisma } = require('../../src/config/database');
+      await prisma.user.update({ where: { email }, data: { emailVerified: true } });
+      const login = await request(app).post('/auth/login').send({
+        email,
+        password: 'SecurePass123!',
+      });
+      customerToken = login.body.accessToken;
     });
 
     test('customer gets 403 on merchant-only endpoint', async () => {

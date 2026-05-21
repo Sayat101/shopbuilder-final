@@ -13,11 +13,19 @@ const envSchema = z.object({
   PORT: z.string().default('3000'),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   CORS_ORIGINS: z.string().optional(),
+  FRONTEND_URL: z.string().default('http://localhost:8080'),
 });
+
+const raw = {
+  ...process.env,
+  JWT_SECRET: process.env.JWT_SECRET || process.env.JWT_SECRET_KEY,
+  JWT_REFRESH_SECRET: process.env.JWT_REFRESH_SECRET || process.env.JWT_REFRESH_SECRET_KEY,
+  RESEND_API_KEY: process.env.RESEND_API_KEY || process.env.EMAIL_API_KEY,
+};
 
 let env;
 try {
-  env = envSchema.parse(process.env);
+  env = envSchema.parse(raw);
 } catch (err) {
   console.error('❌ Invalid environment variables:');
   err.errors.forEach((e) => console.error(`  - ${e.path.join('.')}: ${e.message}`));

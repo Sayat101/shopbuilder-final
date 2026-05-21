@@ -32,20 +32,21 @@ services:
       retries: 5
 
   app:
-    build: ./shopbuilder
+    build: .
     container_name: shopbuilder_app
     ports:
       - '3000:3000'
     environment:
       DATABASE_URL: postgresql://shopbuilder:shopbuilder_pass@postgres:5432/shopbuilder
       REDIS_URL: redis://redis:6379
-      JWT_SECRET: super_secret_jwt_key_change_in_production
-      JWT_REFRESH_SECRET: super_secret_refresh_key_change_in_production
-      JWT_EXPIRES_IN: 15m
-      JWT_REFRESH_EXPIRES_IN: 7d
-      MOCK_PAYMENT_SECRET: mock_payment_secret_key
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-15m}
+      JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-7d}
+      MOCK_PAYMENT_SECRET: ${MOCK_PAYMENT_SECRET}
       PORT: 3000
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8080}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:8080}
       NODE_ENV: production
       RESEND_API_KEY: ${RESEND_API_KEY}
       APP_URL: ${APP_URL:-http://localhost:3000}

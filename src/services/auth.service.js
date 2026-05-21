@@ -43,7 +43,9 @@ async function register({ email, password, role, subdomain }) {
   // MERCHANT: auto-create tenant on registration
   if (userRole === 'MERCHANT') {
     if (!subdomain) throw new ValidationError('subdomain is required for MERCHANT registration');
-
+    if (role === 'SUPER_ADMIN') {
+      throw new ValidationError('Cannot register as SUPER_ADMIN');
+  }
     const existingTenant = await prisma.tenant.findUnique({ where: { subdomain } });
     if (existingTenant) throw new ConflictError('Subdomain already taken');
 

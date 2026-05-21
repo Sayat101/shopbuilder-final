@@ -17,10 +17,16 @@ const webhookRoutes = require('./routes/webhook.routes');
 const analyticsRoutes = require('./routes/analytics.routes');
 const storefrontRoutes = require('./routes/storefront.routes');
 const abandonedCartRoutes = require('./routes/abandonedCart.routes');
+
 const app = express();
 
-// require('./workers/email.worker');
-// require('./workers/webhook.worker');
+// ─── BACKGROUND WORKERS ───────────────────────────────────────
+// Only start workers in non-test environments
+if (process.env.NODE_ENV !== 'test') {
+  require('./workers/email.worker');
+  require('./workers/webhook.worker');
+  require('./workers/abandonedCart.scheduler');
+}
 
 // ─── CORS ─────────────────────────────────────────────────────
 const corsOrigins = process.env.CORS_ORIGINS
@@ -46,7 +52,7 @@ app.use(
 );
 app.use('/openapi.yaml', express.static(path.join(__dirname, '../openapi.yaml')));
 
-// ─── HEALTH CHECK ─────────────────────────────────────────────
+// ─── STATIC / HEALTH ──────────────────────────────────────────
 app.use(express.static(path.join(__dirname, '../frontend')));
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, '../frontend/index.html'));
@@ -57,17 +63,17 @@ app.get('/health', (req, res) => {
 });
 
 // ─── ROUTES ───────────────────────────────────────────────────
-app.use('/auth',     authRoutes);
-app.use('/tenants',  tenantRoutes);
-app.use('/products', productRoutes);
-app.use('/payments', paymentRoutes);
-app.use('/cart',     cartRoutes); 
-app.use('/orders',   orderRoutes);   
+app.use('/auth',      authRoutes);
+app.use('/tenants',   tenantRoutes);
+app.use('/products',  productRoutes);
+app.use('/payments',  paymentRoutes);
+app.use('/cart',      cartRoutes);
+app.use('/orders',    orderRoutes);
 app.use('/discounts', discountRoutes);
-app.use('/webhooks', webhookRoutes);
+app.use('/webhooks',  webhookRoutes);
 app.use('/analytics', analyticsRoutes);
 app.use('/storefront', storefrontRoutes);
-app.use('/cart', abandonedCartRoutes);
+app.use('/cart',      abandonedCartRoutes);
 
 // 404 handler
 app.use((req, res) => {
@@ -76,4 +82,5 @@ app.use((req, res) => {
 
 // Global error handler
 app.use(errorHandler);
+
 module.exports = app;

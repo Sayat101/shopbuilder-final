@@ -72,18 +72,8 @@ async function applyDiscount(tenantId, code, orderAmount) {
   const vatAmount = Math.floor(finalAmount * VAT_RATE);
   const totalWithVat = finalAmount + vatAmount;
 
-  return {
-    originalAmount: orderAmount,
-    discountAmount,
-    finalAmount,
-    vatAmount,
-    totalWithVat,
-    discountCode: discount.code,
-    discountType: discount.type,
-    isStackable: discount.isStackable,
-  };
-
-  // Увеличиваем счётчик использований
+  // Инкрементируем счётчик использований ПЕРЕД return (fix: был мёртвый код)
+  // isStackable=false: эксклюзивный код — нельзя стекать с другими скидками
   await prisma.discountCode.update({
     where: { code: code.toUpperCase() },
     data: { usageCount: { increment: 1 } },
@@ -93,8 +83,11 @@ async function applyDiscount(tenantId, code, orderAmount) {
     originalAmount: orderAmount,
     discountAmount,
     finalAmount,
+    vatAmount,
+    totalWithVat,
     discountCode: discount.code,
     discountType: discount.type,
+    isStackable: discount.isStackable,
   };
 }
 

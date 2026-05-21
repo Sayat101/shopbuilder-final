@@ -5,7 +5,7 @@ const resend = new Resend(env.RESEND_API_KEY);
 const FROM = 'ShopBuilder <onboarding@resend.dev>';
 
 async function sendVerificationEmail(email, token) {
-  const link = `${env.APP_URL}/auth/verify-email?token=${token}`;
+  const link = `${env.FRONTEND_URL}?token=${token}`;
   await resend.emails.send({
     from: FROM,
     to: email,
@@ -23,7 +23,7 @@ async function sendVerificationEmail(email, token) {
 }
 
 async function sendPasswordResetEmail(email, token) {
-  const link = `${env.APP_URL}/auth/reset-password?token=${token}`;
+  const link = `${env.FRONTEND_URL}?reset_token=${token}`;
   await resend.emails.send({
     from: FROM,
     to: email,

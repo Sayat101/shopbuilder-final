@@ -2,7 +2,10 @@ const { v4: uuidv4 } = require('uuid');
 const { prisma } = require('../config/database');
 const { NotFoundError, ValidationError, ForbiddenError } = require('../errors/AppError');
 const { buildPaginationArgs, buildPaginationMeta } = require('../utils/pagination');
-const { queueOrderConfirmationEmail } = require('../workers/email.worker');
+const {
+  queueOrderConfirmationEmail,
+  queueMerchantOrderEmail,
+} = require('../workers/email.worker');
 
 /**
  * Place an order from the customer's active cart.
@@ -11,9 +14,10 @@ const { queueOrderConfirmationEmail } = require('../workers/email.worker');
  *   2. Validate all items have sufficient stock
  *   3. In a single transaction:
  *      a. Create Order with OrderItems
- *      b. Reserve inventory for each variant
- *      c. Mark cart as CONVERTED
+ *      b. Reserve inventory for each variant (double-check inside tx)
+ *      c. Mark cart as CONVERTED + clear items
  *      d. Write AuditLog
+ *   4. Queue emails: customer confirmation + merchant notification
  */
 async function placeOrder(userId, { tenantId, shippingAddress }) {
   // Load cart
@@ -34,7 +38,7 @@ async function placeOrder(userId, { tenantId, shippingAddress }) {
     throw new ValidationError('Cart is empty — add items before placing an order');
   }
 
-  // Validate stock for every item before touching the DB
+  // Pre-flight stock check (fast fail before hitting the transaction)
   for (const item of cart.items) {
     const available = item.variant.inventory.reduce(
       (sum, inv) => sum + inv.available - inv.reserved,
@@ -55,14 +59,13 @@ async function placeOrder(userId, { tenantId, shippingAddress }) {
 
   // One atomic transaction: order + inventory reservation + cart conversion + audit
   const order = await prisma.$transaction(async (tx) => {
-    // Create order with all line items
     const newOrder = await tx.order.create({
       data: {
         userId,
         tenantId,
         status: 'PENDING',
         totalAmount,
-        idempotencyKey: uuidv4(), // server-generated, prevents duplicate orders
+        idempotencyKey: uuidv4(),
         shippingAddress: JSON.stringify(shippingAddress),
         items: {
           create: cart.items.map((item) => ({
@@ -73,29 +76,27 @@ async function placeOrder(userId, { tenantId, shippingAddress }) {
         },
       },
       include: {
-        items: {
-          include: { variant: true },
-        },
+        items: { include: { variant: true } },
       },
     });
-    // Reserve inventory — перечитываем ВНУТРИ транзакции чтобы избежать race condition
+
+    // Reserve inventory — re-read INSIDE the tx to avoid race conditions
     for (const item of cart.items) {
       const inv = await tx.inventoryLevel.findFirst({
         where: { variantId: item.variantId },
       });
       if (inv) {
-    // Проверяем сток ещё раз внутри транзакции (актуальные данные)
         if (inv.available - inv.reserved < item.quantity) {
           throw new ValidationError(
-          `Stock changed for SKU "${item.variant.sku}" — please refresh your cart`
-      );
+            `Stock changed for SKU "${item.variant.sku}" — please refresh your cart`
+          );
+        }
+        await tx.inventoryLevel.update({
+          where: { id: inv.id },
+          data: { reserved: inv.reserved + item.quantity },
+        });
+      }
     }
-      await tx.inventoryLevel.update({
-        where: { id: inv.id },
-        data: { reserved: inv.reserved + item.quantity },
-    });
-  }
-}
 
     // Convert cart so it can't be ordered again
     await tx.cart.update({
@@ -103,10 +104,8 @@ async function placeOrder(userId, { tenantId, shippingAddress }) {
       data: { status: 'CONVERTED' },
     });
 
-    // Clear cart items
     await tx.cartItem.deleteMany({ where: { cartId: cart.id } });
 
-    // Audit log
     await tx.auditLog.create({
       data: {
         userId,
@@ -121,16 +120,28 @@ async function placeOrder(userId, { tenantId, shippingAddress }) {
     return newOrder;
   });
 
-  // Send order confirmation email (async, non-blocking)
-  const user = await prisma.user.findUnique({ where: { id: userId }, select: { email: true } });
-  if (user) await queueOrderConfirmationEmail(user.email, order);
+  // Queue emails (async, non-blocking)
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { email: true },
+  });
+  if (user) {
+    await queueOrderConfirmationEmail(user.email, order);
+  }
+
+  // Notify the merchant who owns this tenant
+  const merchant = await prisma.user.findFirst({
+    where: { tenantId, role: 'MERCHANT' },
+    select: { email: true },
+  });
+  if (merchant) {
+    await queueMerchantOrderEmail(merchant.email, order);
+  }
 
   return order;
 }
 
-/**
- * List orders for the authenticated customer.
- */
+/** List orders for the authenticated customer. */
 async function listMyOrders(userId, query) {
   const args = buildPaginationArgs(query);
 
@@ -147,10 +158,7 @@ async function listMyOrders(userId, query) {
   return buildPaginationMeta(items, args.take - 1);
 }
 
-/**
- * List ALL orders for a tenant (merchant view).
- * Supports optional status filter.
- */
+/** List ALL orders for a tenant (merchant view). */
 async function listTenantOrders(tenantId, query) {
   const args = buildPaginationArgs(query);
   const where = { tenantId };
@@ -170,18 +178,14 @@ async function listTenantOrders(tenantId, query) {
   return buildPaginationMeta(items, args.take - 1);
 }
 
-/**
- * Get a single order. Customers can only see their own orders.
- */
+/** Get a single order. Customers can only see their own. */
 async function getOrder(orderId, userId, role) {
   const order = await prisma.order.findUnique({
     where: { id: orderId },
     include: {
       items: {
         include: {
-          variant: {
-            include: { product: { select: { id: true, title: true } } },
-          },
+          variant: { include: { product: { select: { id: true, title: true } } } },
         },
       },
       payment: true,
@@ -190,11 +194,7 @@ async function getOrder(orderId, userId, role) {
   });
 
   if (!order) throw new NotFoundError('Order not found');
-
-  // Customers can only read their own orders
-  if (role === 'CUSTOMER' && order.userId !== userId) {
-    throw new ForbiddenError('Access denied');
-  }
+  if (role === 'CUSTOMER' && order.userId !== userId) throw new ForbiddenError('Access denied');
 
   return order;
 }
@@ -246,9 +246,7 @@ async function updateOrderStatus(orderId, tenantId, newStatus, userId) {
   return updated;
 }
 
-/**
- * Cancel an order — customer can cancel if still PENDING.
- */
+/** Cancel an order — customer can cancel if still PENDING. */
 async function cancelOrder(orderId, userId) {
   const order = await prisma.order.findUnique({
     where: { id: orderId },
@@ -258,15 +256,14 @@ async function cancelOrder(orderId, userId) {
   if (!order) throw new NotFoundError('Order not found');
   if (order.userId !== userId) throw new ForbiddenError('Access denied');
   if (order.status !== 'PENDING') {
-    throw new ValidationError(`Cannot cancel order with status "${order.status}". Only PENDING orders can be cancelled.`);
+    throw new ValidationError(
+      `Cannot cancel order with status "${order.status}". Only PENDING orders can be cancelled.`
+    );
   }
 
-  const cancelled = await prisma.$transaction(async (tx) => {
-    // Release reserved inventory
+  return prisma.$transaction(async (tx) => {
     for (const item of order.items) {
-      const inv = await tx.inventoryLevel.findFirst({
-        where: { variantId: item.variantId },
-      });
+      const inv = await tx.inventoryLevel.findFirst({ where: { variantId: item.variantId } });
       if (inv) {
         await tx.inventoryLevel.update({
           where: { id: inv.id },
@@ -294,10 +291,9 @@ async function cancelOrder(orderId, userId) {
 
     return result;
   });
-
-  return cancelled;
 }
-// Запросить возврат (CUSTOMER)
+
+/** Request refund — customer only, PAID or FULFILLED orders. */
 async function refundOrder(userId, orderId) {
   const order = await prisma.order.findUnique({
     where: { id: orderId },
@@ -311,13 +307,11 @@ async function refundOrder(userId, orderId) {
   }
 
   const updatedOrder = await prisma.$transaction(async (tx) => {
-    // Обновляем статус заказа
     const updated = await tx.order.update({
       where: { id: orderId },
       data: { status: 'REFUNDED' },
     });
 
-    // Возвращаем инвентарь
     for (const item of order.items) {
       await tx.inventoryLevel.updateMany({
         where: { variantId: item.variantId },
@@ -328,7 +322,6 @@ async function refundOrder(userId, orderId) {
       });
     }
 
-    // Пишем AuditLog
     await tx.auditLog.create({
       data: {
         userId,
@@ -347,29 +340,16 @@ async function refundOrder(userId, orderId) {
   return { order: updatedOrder, message: 'Refund processed successfully' };
 }
 
-// История статусов заказа
+/** Order audit timeline — customer can view their own. */
 async function getOrderTimeline(userId, orderId) {
-  const order = await prisma.order.findUnique({
-    where: { id: orderId },
-  });
-
+  const order = await prisma.order.findUnique({ where: { id: orderId } });
   if (!order) throw new NotFoundError('Order not found');
   if (order.userId !== userId) throw new ForbiddenError('Access denied');
 
   const logs = await prisma.auditLog.findMany({
-    where: {
-      entityType: 'Order',
-      entityId: orderId,
-    },
+    where: { entityType: 'Order', entityId: orderId },
     orderBy: { createdAt: 'asc' },
   });
-  // Найти email мерчанта
-  const merchant = await prisma.user.findFirst({
-    where: { tenantId, role: 'MERCHANT' }
-  });
-  if (merchant) {
-  await queueMerchantOrderEmail(merchant.email, newOrder);
-}
 
   return {
     orderId,

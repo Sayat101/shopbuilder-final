@@ -89,3 +89,32 @@ The `WebhookDelivery` table tracks event delivery with:
 - `attemptCount` — retry counter
 - `nextRetryAt` — exponential backoff timestamp
 - `status` — PENDING | RETRYING | DELIVERED | FAILED
+
+## Docker (full stack)
+```bash
+docker compose up --build
+Frontend: http://localhost:8080
+API (direct): http://localhost:3000
+Swagger: http://localhost:8080/docs
+Environment
+See .env.example. Required: DATABASE_URL, REDIS_URL, JWT_SECRET, JWT_REFRESH_SECRET, RESEND_API_KEY, MOCK_PAYMENT_SECRET, CORS_ORIGINS, FRONTEND_URL.
+
+Tests
+docker compose up postgres redis -d
+npm test
+Deploy (Render example)
+Push to GitHub
+New Web Service → Docker → root Dockerfile OR use Docker Compose if platform supports it
+Set env vars from .env.example
+CORS_ORIGINS and FRONTEND_URL = your public frontend URL
+Copy public URL to DEPLOYED_URL.txt
+Defense demo script
+Register MERCHANT → verify email → login
+Create product (colors/sizes/materials) → Publish
+Register CUSTOMER → verify → Browse Store (merchant subdomain) → Cart → Order → Pay
+Show order confirmation email in inbox
+Merchant: Analytics, Webhook test, Abandoned cart recover
+Background jobs
+BullMQ: email queue, webhooks queue
+Cron: abandonedCart.scheduler — hourly scan for inactive carts
+---

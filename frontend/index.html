@@ -112,57 +112,53 @@
   <h1>🛍️ ShopBuilder</h1>
   <div id="navUser" style="display:none">
     <span id="navEmail" style="margin-right:15px; font-size:14px;"></span>
-    <button onclick="logout()">Logout</button>
+    <button type="button" onclick="logout()">Logout</button>
   </div>
 </div>
 
 <div class="container">
   <div id="alertBox"></div>
 
-  <!-- AUTH PANEL -->
   <div id="authPanel" class="card">
     <h2>Welcome to ShopBuilder</h2>
     <div class="tabs" style="margin-top:15px">
-      <div class="tab active" onclick="switchAuthTab('login')">Login</div>
-      <div class="tab" onclick="switchAuthTab('register')">Register</div>
+      <div class="tab active" onclick="switchAuthTab('login', this)">Login</div>
+      <div class="tab" onclick="switchAuthTab('register', this)">Register</div>
     </div>
 
-    <!-- Login -->
     <div id="loginForm">
       <div class="form-group">
         <label>Email</label>
-        <input type="email" id="loginEmail" placeholder="admin@shopbuilder.kz" />
+        <input type="email" id="loginEmail" placeholder="merchant@example.com" />
       </div>
       <div class="form-group">
         <label>Password</label>
         <input type="password" id="loginPassword" placeholder="Password123!" />
       </div>
-      <button class="btn btn-primary" onclick="login()">Login</button>
+      <button type="button" class="btn btn-primary" onclick="login()">Login</button>
+      <div style="margin-top:10px">
+        <a href="#" onclick="showForgotPassword(); return false;" style="font-size:13px;color:#1a1a2e;">Forgot password?</a>
+      </div>
     </div>
-    <div style="margin-top:10px">
-  <a href="#" onclick="showForgotPassword()" style="font-size:13px;color:#1a1a2e;">Forgot password?</a>
-</div>
 
-<!-- Forgot Password Form -->
-<div id="forgotForm" style="display:none;margin-top:15px;border-top:1px solid #eee;padding-top:15px">
-  <h3 style="margin-bottom:10px;font-size:15px">Reset Password</h3>
-  <div class="form-group">
-    <label>Email</label>
-    <input type="email" id="forgotEmail" placeholder="your@email.com" />
-  </div>
-  <button class="btn btn-primary" onclick="forgotPassword()">Send Reset Link</button>
-</div>
+    <div id="forgotForm" style="display:none;margin-top:15px;border-top:1px solid #eee;padding-top:15px">
+      <h3 style="margin-bottom:10px;font-size:15px">Reset Password</h3>
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="forgotEmail" placeholder="your@email.com" />
+      </div>
+      <button type="button" class="btn btn-primary" onclick="forgotPassword()">Send Reset Link</button>
+    </div>
 
-<!-- Reset Password Form -->
-<div id="resetForm" style="display:none;margin-top:15px;border-top:1px solid #eee;padding-top:15px">
-  <h3 style="margin-bottom:10px;font-size:15px">Enter New Password</h3>
-  <div class="form-group">
-    <label>New Password</label>
-    <input type="password" id="newPassword" placeholder="NewPassword123!" />
-  </div>
-  <button class="btn btn-primary" onclick="resetPassword()">Reset Password</button>
-</div>
-    <!-- Register -->
+    <div id="resetForm" style="display:none;margin-top:15px;border-top:1px solid #eee;padding-top:15px">
+      <h3 style="margin-bottom:10px;font-size:15px">Enter New Password</h3>
+      <div class="form-group">
+        <label>New Password</label>
+        <input type="password" id="newPassword" placeholder="NewPassword123!" />
+      </div>
+      <button type="button" class="btn btn-primary" onclick="resetPassword()">Reset Password</button>
+    </div>
+
     <div id="registerForm" style="display:none">
       <div class="form-group">
         <label>Email</label>
@@ -177,17 +173,17 @@
         <select id="regRole">
           <option value="CUSTOMER">Customer</option>
           <option value="MERCHANT">Merchant</option>
+          <option value="SUPER_ADMIN">Super Admin</option>
         </select>
       </div>
       <div class="form-group" id="subdomainGroup" style="display:none">
         <label>Store Subdomain</label>
         <input type="text" id="regSubdomain" placeholder="my-store" />
       </div>
-      <button class="btn btn-primary" onclick="register()">Register</button>
+      <button type="button" class="btn btn-primary" onclick="register()">Register</button>
     </div>
   </div>
 
-  <!-- MAIN PANEL -->
   <div id="mainPanel" style="display:none">
     <div class="user-info">
       Logged in as: <strong id="userEmail"></strong> |
@@ -197,17 +193,16 @@
 
     <div class="tabs" id="mainTabs"></div>
 
-    <!-- Products Tab -->
     <div id="tab-products" class="panel">
       <div class="card" id="createProductCard" style="display:none">
-        <h2>Create Product</h2>
+        <h2>Create Product (variant matrix)</h2>
         <div class="form-group">
           <label>Title</label>
           <input type="text" id="productTitle" placeholder="Winter Jacket" />
         </div>
         <div class="form-group">
           <label>Description</label>
-          <input type="text" id="productDesc" placeholder="Warm jacket for cold weather" />
+          <input type="text" id="productDesc" placeholder="Warm jacket" />
         </div>
         <div class="form-group">
           <label>Price (tiyn)</label>
@@ -221,29 +216,34 @@
           <label>Sizes (comma separated)</label>
           <input type="text" id="productSizes" placeholder="S,M,L,XL" />
         </div>
-        <button class="btn btn-success" onclick="createProduct()">Create Product + Variants</button>
+        <div class="form-group">
+          <label>Materials (comma separated, optional)</label>
+          <input type="text" id="productMaterials" placeholder="Cotton,Wool" />
+        </div>
+        <button type="button" class="btn btn-success" onclick="createProduct()">Create Product + Variants</button>
       </div>
-
       <div class="card">
-        <h2>Products <button class="btn btn-primary" style="float:right;font-size:12px" onclick="loadProducts()">Refresh</button></h2>
+        <h2>Products
+          <button type="button" class="btn btn-primary" style="float:right;font-size:12px" onclick="loadProducts()">Refresh</button>
+        </h2>
         <div id="productsList" class="grid"></div>
       </div>
     </div>
 
-    <!-- Orders Tab -->
     <div id="tab-orders" class="panel">
       <div class="card">
-        <h2>Orders <button class="btn btn-primary" style="float:right;font-size:12px" onclick="loadOrders()">Refresh</button></h2>
+        <h2>Orders
+          <button type="button" class="btn btn-primary" style="float:right;font-size:12px" onclick="loadOrders()">Refresh</button>
+        </h2>
         <div id="ordersList"></div>
       </div>
     </div>
 
-    <!-- Cart Tab -->
     <div id="tab-cart" class="panel">
       <div class="card">
         <h2>My Cart</h2>
         <div id="cartContent"></div>
-        <div style="margin-top:15px" id="checkoutSection" style="display:none">
+        <div id="checkoutSection" style="display:none; margin-top:15px">
           <h3 style="margin-bottom:10px">Shipping Address</h3>
           <div class="form-group">
             <label>Full Name</label>
@@ -257,21 +257,25 @@
             <label>City</label>
             <input type="text" id="shipCity" placeholder="Almaty" />
           </div>
-          <button class="btn btn-success" onclick="placeOrder()">Place Order</button>
+          <div class="form-group">
+            <label>Discount code</label>
+            <input type="text" id="cartDiscountCode" placeholder="SAVE20" />
+          </div>
+          <button type="button" class="btn btn-warning" onclick="applyCartDiscount()">Apply Discount</button>
+          <p id="discountResult" style="font-size:13px;margin:8px 0"></p>
+          <button type="button" class="btn btn-success" onclick="placeOrder()">Place Order</button>
         </div>
       </div>
     </div>
 
-    <!-- Analytics Tab -->
     <div id="tab-analytics" class="panel">
       <div class="card">
         <h2>Store Analytics</h2>
-        <button class="btn btn-primary" onclick="loadAnalytics()">Load Analytics</button>
+        <button type="button" class="btn btn-primary" onclick="loadAnalytics()">Load Analytics</button>
         <div id="analyticsContent" style="margin-top:15px"></div>
       </div>
     </div>
 
-    <!-- Discounts Tab -->
     <div id="tab-discounts" class="panel">
       <div class="card">
         <h2>Create Discount Code</h2>
@@ -294,47 +298,60 @@
           <label>Max Usage</label>
           <input type="number" id="discountMaxUsage" placeholder="100" />
         </div>
-        <button class="btn btn-success" onclick="createDiscount()">Create Discount</button>
+        <button type="button" class="btn btn-success" onclick="createDiscount()">Create Discount</button>
       </div>
       <div class="card">
-        <h2>Discount Codes <button class="btn btn-primary" style="float:right;font-size:12px" onclick="loadDiscounts()">Refresh</button></h2>
+        <h2>Discount Codes
+          <button type="button" class="btn btn-primary" style="float:right;font-size:12px" onclick="loadDiscounts()">Refresh</button>
+        </h2>
         <div id="discountsList"></div>
       </div>
     </div>
 
-    <!-- Storefront Tab -->
     <div id="tab-storefront" class="panel">
       <div class="card">
-        <h2>Public Storefront Preview</h2>
+        <h2>Public Storefront</h2>
+        <p style="font-size:13px;color:#666;margin-bottom:10px">Enter merchant subdomain, then browse and add to cart.</p>
         <div class="form-group">
           <label>Store Subdomain</label>
-          <input type="text" id="storefrontSubdomain" placeholder="aigerim-bags" />
+          <input type="text" id="storefrontSubdomain" placeholder="my-store" data-tenant-id="" />
         </div>
-        <button class="btn btn-primary" onclick="loadStorefront()">View Store</button>
+        <button type="button" class="btn btn-primary" onclick="loadStorefront()">View Store</button>
         <div id="storefrontContent" style="margin-top:15px" class="grid"></div>
       </div>
     </div>
 
-    <!-- Webhooks Tab -->
     <div id="tab-webhooks" class="panel">
       <div class="card">
         <h2>Register Webhook Endpoint</h2>
         <div class="form-group">
           <label>Endpoint URL</label>
-          <input type="text" id="webhookUrl" placeholder="https://myapp.com/webhooks" />
+          <input type="text" id="webhookUrl" placeholder="https://webhook.site/your-id" />
         </div>
-        <button class="btn btn-success" onclick="createWebhook()">Register Endpoint</button>
+        <button type="button" class="btn btn-success" onclick="createWebhook()">Register Endpoint</button>
       </div>
       <div class="card">
-        <h2>Webhook Endpoints <button class="btn btn-primary" style="float:right;font-size:12px" onclick="loadWebhooks()">Refresh</button></h2>
+        <h2>Webhook Endpoints
+          <button type="button" class="btn btn-primary" style="float:right;font-size:12px" onclick="loadWebhooks()">Refresh</button>
+        </h2>
         <div id="webhooksList"></div>
       </div>
     </div>
 
-    <!-- Tenants Tab (SUPER_ADMIN) -->
+    <div id="tab-abandoned" class="panel">
+      <div class="card">
+        <h2>Abandoned Carts
+          <button type="button" class="btn btn-primary" style="float:right;font-size:12px" onclick="loadAbandonedCarts()">Refresh</button>
+        </h2>
+        <div id="abandonedList"></div>
+      </div>
+    </div>
+
     <div id="tab-tenants" class="panel">
       <div class="card">
-        <h2>All Tenants <button class="btn btn-primary" style="float:right;font-size:12px" onclick="loadTenants()">Refresh</button></h2>
+        <h2>All Tenants
+          <button type="button" class="btn btn-primary" style="float:right;font-size:12px" onclick="loadTenants()">Refresh</button>
+        </h2>
         <div id="tenantsList"></div>
       </div>
     </div>
@@ -342,58 +359,80 @@
 </div>
 
 <script>
-  const API = 'https://shopbuilder.onrender.com';
-  // Auto-handle email verification from link
-const urlParams = new URLSearchParams(window.location.search);
-const verifyToken = urlParams.get('token');
-const resetToken = urlParams.get('reset_token');
+  const API = '/api';
+  const urlParams = new URLSearchParams(window.location.search);
+  const verifyToken = urlParams.get('token');
+  const resetToken = urlParams.get('reset_token');
 
-if (verifyToken) {
-  fetch(API + '/auth/verify-email', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ token: verifyToken })
-  })
-  .then(r => r.json())
-  .then(data => {
-    document.getElementById('alertBox').innerHTML =
-      `<div class="alert alert-success">✅ ${data.message || 'Email verified! You can now login.'}</div>`;
-  })
-  .catch(() => {
-    document.getElementById('alertBox').innerHTML =
-      `<div class="alert alert-error">❌ Verification failed. Link may be expired.</div>`;
-  });
-}
   let token = localStorage.getItem('token') || '';
+  let refreshToken = localStorage.getItem('refreshToken') || '';
   let currentUser = JSON.parse(localStorage.getItem('user') || 'null');
+  let selectedStoreTenantId = localStorage.getItem('selectedStoreTenantId') || '';
 
-  // ── Helpers ──────────────────────────────────────────────────
+  if (verifyToken) {
+    fetch(API + '/auth/verify-email?token=' + encodeURIComponent(verifyToken))
+      .then(r => r.json())
+      .then(data => {
+        document.getElementById('alertBox').innerHTML =
+          `<div class="alert alert-success">✅ ${data.message || 'Email verified! You can now login.'}</div>`;
+      })
+      .catch(() => {
+        document.getElementById('alertBox').innerHTML =
+          `<div class="alert alert-error">❌ Verification failed. Link may be expired.</div>`;
+      });
+  }
+
+  if (resetToken) {
+    document.getElementById('resetForm').style.display = 'block';
+  }
 
   function showAlert(msg, type = 'info') {
     const box = document.getElementById('alertBox');
     box.innerHTML = `<div class="alert alert-${type}">${msg}</div>`;
-    setTimeout(() => box.innerHTML = '', 4000);
+    setTimeout(() => { box.innerHTML = ''; }, 5000);
   }
 
-  async function api(method, path, body) {
+  async function api(method, path, body, retry = true) {
     const opts = {
       method,
       headers: { 'Content-Type': 'application/json' },
     };
-    if (token) opts.headers['Authorization'] = `Bearer ${token}`;
+    if (token) opts.headers['Authorization'] = 'Bearer ' + token;
     if (body) opts.body = JSON.stringify(body);
 
     const res = await fetch(API + path, opts);
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message || data.error || 'Request failed');
+    let data = {};
+    try { data = await res.json(); } catch (_) {}
+
+    if (res.status === 401 && retry && refreshToken) {
+      try {
+        const refreshed = await fetch(API + '/auth/refresh', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ refreshToken }),
+        });
+        const rd = await refreshed.json();
+        if (refreshed.ok && rd.accessToken) {
+          token = rd.accessToken;
+          localStorage.setItem('token', token);
+          if (rd.refreshToken) {
+            refreshToken = rd.refreshToken;
+            localStorage.setItem('refreshToken', refreshToken);
+          }
+          return api(method, path, body, false);
+        }
+      } catch (_) {}
+    }
+
+    if (!res.ok) {
+      throw new Error(data.message || data.error || ('Request failed (' + res.status + ')'));
+    }
     return data;
   }
 
-  // ── Auth ─────────────────────────────────────────────────────
-
-  function switchAuthTab(tab) {
+  function switchAuthTab(tab, el) {
     document.querySelectorAll('#authPanel .tab').forEach(t => t.classList.remove('active'));
-    event.target.classList.add('active');
+    if (el) el.classList.add('active');
     document.getElementById('loginForm').style.display = tab === 'login' ? 'block' : 'none';
     document.getElementById('registerForm').style.display = tab === 'register' ? 'block' : 'none';
   }
@@ -403,6 +442,35 @@ if (verifyToken) {
       this.value === 'MERCHANT' ? 'block' : 'none';
   });
 
+  function showForgotPassword() {
+    document.getElementById('forgotForm').style.display = 'block';
+  }
+
+  async function forgotPassword() {
+    try {
+      await api('POST', '/auth/forgot-password', {
+        email: document.getElementById('forgotEmail').value,
+      });
+      showAlert('Reset link sent! Check your email.', 'success');
+    } catch (err) {
+      showAlert(err.message, 'error');
+    }
+  }
+
+  async function resetPassword() {
+    try {
+      const t = urlParams.get('reset_token') || urlParams.get('token');
+      await api('POST', '/auth/reset-password', {
+        token: t,
+        newPassword: document.getElementById('newPassword').value,
+      });
+      showAlert('Password reset! You can now login.', 'success');
+      document.getElementById('resetForm').style.display = 'none';
+    } catch (err) {
+      showAlert(err.message, 'error');
+    }
+  }
+
   async function login() {
     try {
       const data = await api('POST', '/auth/login', {
@@ -410,8 +478,10 @@ if (verifyToken) {
         password: document.getElementById('loginPassword').value,
       });
       token = data.accessToken;
+      refreshToken = data.refreshToken || '';
       currentUser = data.user;
       localStorage.setItem('token', token);
+      localStorage.setItem('refreshToken', refreshToken);
       localStorage.setItem('user', JSON.stringify(currentUser));
       showAlert('Logged in successfully!', 'success');
       renderMainPanel();
@@ -438,17 +508,20 @@ if (verifyToken) {
     }
   }
 
-  function logout() {
+  async function logout() {
+    try {
+      if (token) await api('POST', '/auth/logout');
+    } catch (_) {}
     token = '';
+    refreshToken = '';
     currentUser = null;
     localStorage.removeItem('token');
+    localStorage.removeItem('refreshToken');
     localStorage.removeItem('user');
     document.getElementById('mainPanel').style.display = 'none';
     document.getElementById('authPanel').style.display = 'block';
     document.getElementById('navUser').style.display = 'none';
   }
-
-  // ── Main Panel ────────────────────────────────────────────────
 
   function renderMainPanel() {
     document.getElementById('authPanel').style.display = 'none';
@@ -461,39 +534,6 @@ if (verifyToken) {
 
     const role = currentUser.role;
     const tabs = [];
-  function showForgotPassword() {
-  document.getElementById('forgotForm').style.display = 'block';
-}
-
-async function forgotPassword() {
-  try {
-    await api('POST', '/auth/forgot-password', {
-      email: document.getElementById('forgotEmail').value
-    });
-    showAlert('Reset link sent! Check your email.', 'success');
-  } catch(err) {
-    showAlert(err.message, 'error');
-  }
-}
-
-async function resetPassword() {
-  try {
-    const token = new URLSearchParams(window.location.search).get('reset_token');
-    await api('POST', '/auth/reset-password', {
-      token,
-      newPassword: document.getElementById('newPassword').value
-    });
-    showAlert('Password reset! You can now login.', 'success');
-    document.getElementById('resetForm').style.display = 'none';
-  } catch(err) {
-    showAlert(err.message, 'error');
-  }
-}
-
-// Show reset form if reset_token in URL
-if (resetToken) {
-  document.getElementById('resetForm').style.display = 'block';
-}
 
     if (role === 'MERCHANT' || role === 'SUPER_ADMIN') {
       tabs.push({ id: 'products', label: '📦 Products' });
@@ -501,6 +541,7 @@ if (resetToken) {
       tabs.push({ id: 'analytics', label: '📊 Analytics' });
       tabs.push({ id: 'discounts', label: '🏷️ Discounts' });
       tabs.push({ id: 'webhooks', label: '🔗 Webhooks' });
+      tabs.push({ id: 'abandoned', label: '🛒 Abandoned' });
     }
 
     if (role === 'CUSTOMER') {
@@ -513,46 +554,48 @@ if (resetToken) {
       tabs.push({ id: 'tenants', label: '🏢 Tenants' });
     }
 
-    const tabsHtml = tabs.map((t, i) =>
+    document.getElementById('mainTabs').innerHTML = tabs.map((t, i) =>
       `<div class="tab ${i === 0 ? 'active' : ''}" onclick="switchTab('${t.id}', this)">${t.label}</div>`
     ).join('');
 
-    document.getElementById('mainTabs').innerHTML = tabsHtml;
+    document.getElementById('createProductCard').style.display =
+      (role === 'MERCHANT' || role === 'SUPER_ADMIN') ? 'block' : 'none';
 
-    // Показываем create product только для merchant
-    if (role === 'MERCHANT' || role === 'SUPER_ADMIN') {
-      document.getElementById('createProductCard').style.display = 'block';
+    if (tabs.length) {
+      switchTab(tabs[0].id, document.querySelector('#mainTabs .tab'));
     }
-
-    switchTab(tabs[0].id, document.querySelector('.tab'));
-
-    // Автозагрузка данных
-    if (role === 'MERCHANT' || role === 'SUPER_ADMIN') loadProducts();
-    if (role === 'CUSTOMER') loadCart();
   }
 
   function switchTab(tabId, el) {
-    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-    document.getElementById('tab-' + tabId).classList.add('active');
+    document.querySelectorAll('#mainPanel .panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('#mainTabs .tab').forEach(t => t.classList.remove('active'));
+    const panel = document.getElementById('tab-' + tabId);
+    if (panel) panel.classList.add('active');
     if (el) el.classList.add('active');
-  }
 
-  // ── Products ──────────────────────────────────────────────────
+    if (tabId === 'products') loadProducts();
+    if (tabId === 'orders') loadOrders();
+    if (tabId === 'cart') loadCart();
+    if (tabId === 'discounts') loadDiscounts();
+    if (tabId === 'webhooks') loadWebhooks();
+    if (tabId === 'abandoned') loadAbandonedCarts();
+    if (tabId === 'tenants') loadTenants();
+  }
 
   async function createProduct() {
     try {
       const colors = document.getElementById('productColors').value.split(',').map(s => s.trim()).filter(Boolean);
       const sizes = document.getElementById('productSizes').value.split(',').map(s => s.trim()).filter(Boolean);
+      const materials = document.getElementById('productMaterials').value.split(',').map(s => s.trim()).filter(Boolean);
 
       const data = await api('POST', '/products', {
         title: document.getElementById('productTitle').value,
         description: document.getElementById('productDesc').value,
-        price: parseInt(document.getElementById('productPrice').value),
-        options: { colors, sizes },
+        price: parseInt(document.getElementById('productPrice').value, 10),
+        options: { colors, sizes, materials },
       });
 
-      showAlert(`Product created with ${data.product.variants.length} variants!`, 'success');
+      showAlert('Product created with ' + data.product.variants.length + ' variants!', 'success');
       loadProducts();
     } catch (err) {
       showAlert(err.message, 'error');
@@ -575,8 +618,8 @@ if (resetToken) {
           <div class="price">${p.variants?.[0]?.price ? (p.variants[0].price / 100).toFixed(0) + ' ₸' : 'N/A'}</div>
           <span class="status status-${p.status}">${p.status}</span>
           <p style="font-size:12px;color:#888;margin-bottom:10px">${p.variants?.length || 0} variants</p>
-          ${p.status === 'DRAFT' ? `<button class="btn btn-success" style="font-size:12px" onclick="publishProduct('${p.id}')">Publish</button>` : ''}
-          <button class="btn btn-danger" style="font-size:12px" onclick="archiveProduct('${p.id}')">Archive</button>
+          ${p.status === 'DRAFT' ? `<button type="button" class="btn btn-success" style="font-size:12px" onclick="publishProduct('${p.id}')">Publish</button>` : ''}
+          <button type="button" class="btn btn-danger" style="font-size:12px" onclick="archiveProduct('${p.id}')">Archive</button>
         </div>
       `).join('');
     } catch (err) {
@@ -586,7 +629,7 @@ if (resetToken) {
 
   async function publishProduct(id) {
     try {
-      await api('PATCH', `/products/${id}/status`, { status: 'ACTIVE' });
+      await api('PATCH', '/products/' + id + '/status', { status: 'ACTIVE' });
       showAlert('Product published!', 'success');
       loadProducts();
     } catch (err) {
@@ -596,7 +639,7 @@ if (resetToken) {
 
   async function archiveProduct(id) {
     try {
-      await api('DELETE', `/products/${id}`);
+      await api('DELETE', '/products/' + id);
       showAlert('Product archived!', 'success');
       loadProducts();
     } catch (err) {
@@ -604,13 +647,10 @@ if (resetToken) {
     }
   }
 
-  // ── Orders ────────────────────────────────────────────────────
-  
   async function loadOrders() {
     try {
       const role = currentUser.role;
-      const endpoint = (role === 'MERCHANT' || role === 'SUPER_ADMIN')
-        ? '/orders/all' : '/orders';
+      const endpoint = (role === 'MERCHANT' || role === 'SUPER_ADMIN') ? '/orders/all' : '/orders';
       const data = await api('GET', endpoint + '?limit=20');
       const list = document.getElementById('ordersList');
 
@@ -626,18 +666,18 @@ if (resetToken) {
               <strong>#${o.id.slice(-8).toUpperCase()}</strong>
               <span class="order-status status-${o.status}" style="margin-left:10px">${o.status}</span>
             </div>
-            <div style="font-weight:bold;color:#e94560">${(o.totalAmount/100).toFixed(0)} ₸</div>
+            <div style="font-weight:bold;color:#e94560">${(o.totalAmount / 100).toFixed(0)} ₸</div>
           </div>
           <div style="font-size:12px;color:#888;margin-top:5px">${new Date(o.createdAt).toLocaleString()}</div>
           <div style="margin-top:10px">
-            ${role === 'MERCHANT' && o.status === 'PENDING' ?
-              `<button class="btn btn-success" style="font-size:12px" onclick="updateOrderStatus('${o.id}','PAID')">Mark Paid</button>` : ''}
-            ${role === 'MERCHANT' && o.status === 'PAID' ?
-              `<button class="btn btn-primary" style="font-size:12px" onclick="updateOrderStatus('${o.id}','FULFILLED')">Mark Fulfilled</button>` : ''}
+            ${(role === 'MERCHANT' || role === 'SUPER_ADMIN') && o.status === 'PENDING' ?
+              `<button type="button" class="btn btn-success" style="font-size:12px" onclick="updateOrderStatus('${o.id}','PAID')">Mark Paid</button>` : ''}
+            ${(role === 'MERCHANT' || role === 'SUPER_ADMIN') && o.status === 'PAID' ?
+              `<button type="button" class="btn btn-primary" style="font-size:12px" onclick="updateOrderStatus('${o.id}','FULFILLED')">Mark Fulfilled</button>` : ''}
             ${role === 'CUSTOMER' && o.status === 'PENDING' ?
-              `<button class="btn btn-success" style="font-size:12px" onclick="payOrder('${o.id}', ${o.totalAmount})">💳 Pay Now</button>` : ''}
-            ${role === 'CUSTOMER' && ['PAID','FULFILLED'].includes(o.status) ?
-              `<button class="btn btn-warning" style="font-size:12px" onclick="refundOrder('${o.id}')">Request Refund</button>` : ''}
+              `<button type="button" class="btn btn-success" style="font-size:12px" onclick="payOrder('${o.id}', ${o.totalAmount})">💳 Pay Now</button>` : ''}
+            ${role === 'CUSTOMER' && ['PAID', 'FULFILLED'].includes(o.status) ?
+              `<button type="button" class="btn btn-warning" style="font-size:12px" onclick="refundOrder('${o.id}')">Request Refund</button>` : ''}
           </div>
         </div>
       `).join('');
@@ -645,25 +685,26 @@ if (resetToken) {
       showAlert(err.message, 'error');
     }
   }
+
   async function payOrder(orderId, amount) {
-  try {
-    const data = await api('POST', '/payments/checkout', {
-      orderId,
-      amount,
-      method: 'MOCK_CARD',
-      idempotencyKey: 'pay-' + orderId + '-' + Date.now(),
-    });
-    showAlert(`Payment successful! Status: ${data.status}`, 'success');
-    loadOrders();
-  } catch(err) {
-    showAlert(err.message, 'error');
+    try {
+      const data = await api('POST', '/payments/checkout', {
+        orderId,
+        amount,
+        method: 'MOCK_CARD',
+        idempotencyKey: 'pay-' + orderId + '-' + Date.now(),
+      });
+      showAlert('Payment successful! Status: ' + data.status, 'success');
+      loadOrders();
+    } catch (err) {
+      showAlert(err.message, 'error');
+    }
   }
-}
 
   async function updateOrderStatus(id, status) {
     try {
-      await api('PATCH', `/orders/${id}/status`, { status });
-      showAlert(`Order updated to ${status}!`, 'success');
+      await api('PATCH', '/orders/' + id + '/status', { status });
+      showAlert('Order updated to ' + status + '!', 'success');
       loadOrders();
     } catch (err) {
       showAlert(err.message, 'error');
@@ -672,15 +713,13 @@ if (resetToken) {
 
   async function refundOrder(id) {
     try {
-      await api('POST', `/orders/${id}/refund`);
+      await api('POST', '/orders/' + id + '/refund');
       showAlert('Refund processed!', 'success');
       loadOrders();
     } catch (err) {
       showAlert(err.message, 'error');
     }
   }
-
-  // ── Cart ──────────────────────────────────────────────────────
 
   async function loadCart() {
     try {
@@ -702,13 +741,13 @@ if (resetToken) {
               <td>${item.variant?.product?.title || 'Product'}</td>
               <td><span class="badge badge-blue">${item.variant?.sku || ''}</span></td>
               <td>${item.quantity}</td>
-              <td>${((item.variant?.price || 0)/100).toFixed(0)} ₸</td>
-              <td><button class="btn btn-danger" style="font-size:11px" onclick="removeFromCart('${item.variantId}')">Remove</button></td>
+              <td>${((item.variant?.price || 0) / 100).toFixed(0)} ₸</td>
+              <td><button type="button" class="btn btn-danger" style="font-size:11px" onclick="removeFromCart('${item.variantId}')">Remove</button></td>
             </tr>
           `).join('')}
         </table>
         <p style="margin-top:10px;font-weight:bold">
-          Total: ${cart.items.reduce((s,i) => s + (i.variant?.price||0)*i.quantity, 0)/100} ₸
+          Total: ${cart.items.reduce((s, i) => s + (i.variant?.price || 0) * i.quantity, 0) / 100} ₸
         </p>
       `;
       document.getElementById('checkoutSection').style.display = 'block';
@@ -719,7 +758,7 @@ if (resetToken) {
 
   async function removeFromCart(variantId) {
     try {
-      await api('DELETE', `/cart/items/${variantId}`);
+      await api('DELETE', '/cart/items/' + variantId);
       showAlert('Item removed!', 'success');
       loadCart();
     } catch (err) {
@@ -727,10 +766,19 @@ if (resetToken) {
     }
   }
 
+  function getOrderTenantId() {
+    const el = document.getElementById('storefrontSubdomain');
+    return el?.dataset?.tenantId || selectedStoreTenantId || currentUser.tenantId;
+  }
+
   async function placeOrder() {
     try {
+      const tenantId = getOrderTenantId();
+      if (!tenantId || tenantId === 'platform') {
+        throw new Error('Open a store first (Browse Store tab) and enter merchant subdomain');
+      }
       const data = await api('POST', '/orders', {
-        tenantId: document.getElementById('storefrontSubdomain').dataset?.tenantId || currentUser.tenantId,
+        tenantId,
         shippingAddress: {
           name: document.getElementById('shipName').value,
           street: document.getElementById('shipStreet').value,
@@ -739,14 +787,30 @@ if (resetToken) {
           zip: '050000',
         },
       });
-      showAlert(`Order #${data.order.id.slice(-8).toUpperCase()} placed!`, 'success');
+      showAlert('Order #' + data.order.id.slice(-8).toUpperCase() + ' placed!', 'success');
       loadCart();
+      switchTab('orders', null);
+      loadOrders();
     } catch (err) {
       showAlert(err.message, 'error');
     }
   }
 
-  // ── Analytics ─────────────────────────────────────────────────
+  async function applyCartDiscount() {
+    try {
+      showAlert('Discount preview uses your account tenant. For customer demo, merchant can test codes in Discounts tab.', 'info');
+      const cart = await api('GET', '/cart');
+      const total = (cart.cart?.items || cart.items || []).reduce(
+        (s, i) => s + (i.variant?.price || 0) * i.quantity, 0
+      );
+      const code = document.getElementById('cartDiscountCode').value;
+      const r = await api('POST', '/discounts/apply', { code, orderAmount: total });
+      document.getElementById('discountResult').textContent =
+        'Discount: ' + (r.discountAmount / 100) + ' ₸ → Total with VAT: ' + (r.totalWithVat / 100) + ' ₸';
+    } catch (err) {
+      showAlert(err.message, 'error');
+    }
+  }
 
   async function loadAnalytics() {
     try {
@@ -762,7 +826,7 @@ if (resetToken) {
             <p style="color:#888">Total Orders</p>
           </div>
           <div class="card" style="text-align:center">
-            <h2 style="font-size:36px;color:#27ae60">${(overview.overview.totalRevenue/100).toFixed(0)} ₸</h2>
+            <h2 style="font-size:36px;color:#27ae60">${(overview.overview.totalRevenue / 100).toFixed(0)} ₸</h2>
             <p style="color:#888">Total Revenue</p>
           </div>
           <div class="card" style="text-align:center">
@@ -774,39 +838,30 @@ if (resetToken) {
             <p style="color:#888">Active Products</p>
           </div>
         </div>
-
         <div class="card">
-          <h2>🔴 Low Stock Items (≤10 units)</h2>
+          <h2>🔴 Low Stock (≤10)</h2>
           ${inventory.lowStock.length === 0 ? '<p style="color:#888">All stock levels are good!</p>' :
-            `<table>
-              <tr><th>Product</th><th>SKU</th><th>Available</th><th>Reserved</th><th>Location</th></tr>
-              ${inventory.lowStock.map(i => `
-                <tr>
-                  <td>${i.productTitle}</td>
-                  <td><span class="badge badge-blue">${i.sku}</span></td>
-                  <td style="color:#e74c3c;font-weight:bold">${i.available}</td>
-                  <td>${i.reserved}</td>
-                  <td>${i.location}</td>
-                </tr>
-              `).join('')}
-            </table>`
-          }
+            '<table><tr><th>Product</th><th>SKU</th><th>Available</th><th>Location</th></tr>' +
+            inventory.lowStock.map(i => `
+              <tr>
+                <td>${i.productTitle}</td>
+                <td><span class="badge badge-blue">${i.sku}</span></td>
+                <td style="color:#e74c3c;font-weight:bold">${i.available}</td>
+                <td>${i.location}</td>
+              </tr>
+            `).join('') + '</table>'}
         </div>
-
         <div class="card" style="margin-top:15px">
           <h2>🏆 Top Products</h2>
           ${overview.topProducts.length === 0 ? '<p style="color:#888">No sales yet.</p>' :
-            `<table>
-              <tr><th>Product</th><th>SKU</th><th>Total Sold</th></tr>
-              ${overview.topProducts.map(p => `
-                <tr>
-                  <td>${p.productTitle || 'N/A'}</td>
-                  <td><span class="badge badge-blue">${p.sku || 'N/A'}</span></td>
-                  <td><strong>${p.totalSold}</strong></td>
-                </tr>
-              `).join('')}
-            </table>`
-          }
+            '<table><tr><th>Product</th><th>SKU</th><th>Sold</th></tr>' +
+            overview.topProducts.map(p => `
+              <tr>
+                <td>${p.productTitle || 'N/A'}</td>
+                <td><span class="badge badge-blue">${p.sku || 'N/A'}</span></td>
+                <td><strong>${p.totalSold}</strong></td>
+              </tr>
+            `).join('') + '</table>'}
         </div>
       `;
     } catch (err) {
@@ -814,15 +869,13 @@ if (resetToken) {
     }
   }
 
-  // ── Discounts ─────────────────────────────────────────────────
-
   async function createDiscount() {
     try {
       await api('POST', '/discounts', {
         code: document.getElementById('discountCode').value,
         type: document.getElementById('discountType').value,
-        value: parseInt(document.getElementById('discountValue').value),
-        maxUsage: parseInt(document.getElementById('discountMaxUsage').value) || null,
+        value: parseInt(document.getElementById('discountValue').value, 10),
+        maxUsage: parseInt(document.getElementById('discountMaxUsage').value, 10) || null,
       });
       showAlert('Discount code created!', 'success');
       loadDiscounts();
@@ -848,10 +901,10 @@ if (resetToken) {
             <tr>
               <td><strong>${d.code}</strong></td>
               <td>${d.type}</td>
-              <td>${d.type === 'PERCENTAGE' ? d.value + '%' : d.value/100 + ' ₸'}</td>
+              <td>${d.type === 'PERCENTAGE' ? d.value + '%' : (d.value / 100) + ' ₸'}</td>
               <td>${d.usageCount}</td>
               <td>${d.maxUsage || '∞'}</td>
-              <td><button class="btn btn-danger" style="font-size:11px" onclick="deleteDiscount('${d.id}')">Delete</button></td>
+              <td><button type="button" class="btn btn-danger" style="font-size:11px" onclick="deleteDiscount('${d.id}')">Delete</button></td>
             </tr>
           `).join('')}
         </table>
@@ -863,7 +916,7 @@ if (resetToken) {
 
   async function deleteDiscount(id) {
     try {
-      await api('DELETE', `/discounts/${id}`);
+      await api('DELETE', '/discounts/' + id);
       showAlert('Discount deleted!', 'success');
       loadDiscounts();
     } catch (err) {
@@ -871,30 +924,40 @@ if (resetToken) {
     }
   }
 
-  // ── Storefront ────────────────────────────────────────────────
-
   async function loadStorefront() {
     try {
-      const subdomain = document.getElementById('storefrontSubdomain').value;
-      const data = await api('GET', `/storefront/${subdomain}/products?limit=20`);
+      const subdomain = document.getElementById('storefrontSubdomain').value.trim();
+      if (!subdomain) throw new Error('Enter store subdomain');
+
+      const store = await api('GET', '/storefront/' + subdomain);
+      const tenantId = store.tenant?.id;
+      if (!tenantId) throw new Error('Store not found');
+
+      document.getElementById('storefrontSubdomain').dataset.tenantId = tenantId;
+      selectedStoreTenantId = tenantId;
+      localStorage.setItem('selectedStoreTenantId', tenantId);
+
+      const data = await api('GET', '/storefront/' + subdomain + '/products?limit=20');
       const content = document.getElementById('storefrontContent');
 
       if (!data.data || data.data.length === 0) {
-        content.innerHTML = '<p style="color:#888">No products in this store.</p>';
+        content.innerHTML = '<p style="color:#888">No active products in this store.</p>';
         return;
       }
 
       content.innerHTML = data.data.map(p => `
         <div class="product-card">
           <h3>${p.title}</h3>
-          <div class="price">${p.variants?.[0]?.price ? (p.variants[0].price/100).toFixed(0) + ' ₸' : 'N/A'}</div>
-          <p style="font-size:12px;color:#888;margin-bottom:10px">${p.variants?.length || 0} variants available</p>
+          <div class="price">${p.variants?.[0]?.price ? (p.variants[0].price / 100).toFixed(0) + ' ₸' : 'N/A'}</div>
+          <p style="font-size:12px;color:#888">${p.variants?.length || 0} variants</p>
           ${p.variants?.[0] ? `
-            <button class="btn btn-primary" style="font-size:12px"
+            <button type="button" class="btn btn-primary" style="font-size:12px"
               onclick="addToCart('${p.variants[0].id}')">Add to Cart</button>
           ` : ''}
         </div>
       `).join('');
+
+      showAlert('Store loaded: ' + subdomain, 'success');
     } catch (err) {
       showAlert(err.message, 'error');
     }
@@ -909,15 +972,13 @@ if (resetToken) {
     }
   }
 
-  // ── Webhooks ──────────────────────────────────────────────────
-
   async function createWebhook() {
     try {
       const data = await api('POST', '/webhooks/endpoints', {
         url: document.getElementById('webhookUrl').value,
         events: ['order.created', 'order.paid', 'order.fulfilled'],
       });
-      showAlert(`Webhook registered! Secret: ${data.secret}`, 'success');
+      showAlert('Webhook registered! Secret: ' + data.secret, 'success');
       loadWebhooks();
     } catch (err) {
       showAlert(err.message, 'error');
@@ -930,7 +991,7 @@ if (resetToken) {
       const list = document.getElementById('webhooksList');
 
       if (!data.endpoints || data.endpoints.length === 0) {
-        list.innerHTML = '<p style="color:#888">No webhook endpoints registered.</p>';
+        list.innerHTML = '<p style="color:#888">No webhook endpoints.</p>';
         return;
       }
 
@@ -943,8 +1004,8 @@ if (resetToken) {
               <td>${e.events.join(', ')}</td>
               <td>${e.isActive ? '✅' : '❌'}</td>
               <td>
-                <button class="btn btn-primary" style="font-size:11px" onclick="testWebhook('${e.id}')">Test</button>
-                <button class="btn btn-danger" style="font-size:11px" onclick="deleteWebhook('${e.id}')">Delete</button>
+                <button type="button" class="btn btn-primary" style="font-size:11px" onclick="testWebhook('${e.id}')">Test</button>
+                <button type="button" class="btn btn-danger" style="font-size:11px" onclick="deleteWebhook('${e.id}')">Delete</button>
               </td>
             </tr>
           `).join('')}
@@ -957,8 +1018,8 @@ if (resetToken) {
 
   async function testWebhook(id) {
     try {
-      await api('POST', `/webhooks/endpoints/${id}/test`);
-      showAlert('Test webhook sent!', 'success');
+      await api('POST', '/webhooks/endpoints/' + id + '/test');
+      showAlert('Test webhook queued!', 'success');
     } catch (err) {
       showAlert(err.message, 'error');
     }
@@ -966,7 +1027,7 @@ if (resetToken) {
 
   async function deleteWebhook(id) {
     try {
-      await api('DELETE', `/webhooks/endpoints/${id}`);
+      await api('DELETE', '/webhooks/endpoints/' + id);
       showAlert('Webhook deleted!', 'success');
       loadWebhooks();
     } catch (err) {
@@ -974,7 +1035,36 @@ if (resetToken) {
     }
   }
 
-  // ── Tenants ───────────────────────────────────────────────────
+  async function loadAbandonedCarts() {
+    try {
+      const data = await api('GET', '/cart/abandoned');
+      const list = document.getElementById('abandonedList');
+      const carts = data.abandonedCarts || [];
+
+      if (!carts.length) {
+        list.innerHTML = '<p style="color:#888">No abandoned carts.</p>';
+        return;
+      }
+
+      list.innerHTML = carts.map(c => `
+        <div class="order-card">
+          <p>Cart ${c.id.slice(-8)} — ${c.user?.email || 'unknown'} — ${c.items?.length || 0} items</p>
+          <button type="button" class="btn btn-success" onclick="recoverCart('${c.id}')">Send recovery email</button>
+        </div>
+      `).join('');
+    } catch (err) {
+      showAlert(err.message, 'error');
+    }
+  }
+
+  async function recoverCart(cartId) {
+    try {
+      await api('POST', '/cart/abandoned/' + cartId + '/recover');
+      showAlert('Recovery email queued!', 'success');
+    } catch (err) {
+      showAlert(err.message, 'error');
+    }
+  }
 
   async function loadTenants() {
     try {
@@ -993,7 +1083,7 @@ if (resetToken) {
             <tr>
               <td><strong>${t.subdomain}</strong></td>
               <td><span class="badge badge-blue">${t.plan}</span></td>
-              <td><span class="order-status status-${t.status === 'ACTIVE' ? 'PAID' : 'CANCELLED'}">${t.status}</span></td>
+              <td>${t.status}</td>
               <td>${new Date(t.createdAt).toLocaleDateString()}</td>
             </tr>
           `).join('')}
@@ -1003,8 +1093,6 @@ if (resetToken) {
       showAlert(err.message, 'error');
     }
   }
-
-  // ── Init ──────────────────────────────────────────────────────
 
   if (token && currentUser) {
     renderMainPanel();

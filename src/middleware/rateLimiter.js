@@ -1,28 +1,46 @@
-const requests = new Map();
+const { RateLimiterRedis } = require('rate-limiter-flexible');
+const redis = require('../config/redis');
 
-function rateLimitAuth(req, res, next) {
-  const key = req.ip;
-  const now = Date.now();
-  const windowMs = 60 * 1000;
-  const max = 50; // увеличили с 5 до 50
+// Auth endpoints: 10 attempts per minute per IP (Redis-backed)
+const authLimiter = new RateLimiterRedis({
+  storeClient: redis,
+  keyPrefix: 'rl:auth',
+  points: 10,
+  duration: 60,
+});
 
-  if (!requests.has(key)) {
-    requests.set(key, []);
-  }
+// General API: 100 requests per minute per IP
+const apiLimiter = new RateLimiterRedis({
+  storeClient: redis,
+  keyPrefix: 'rl:api',
+  points: 100,
+  duration: 60,
+});
 
-  const timestamps = requests.get(key).filter(t => now - t < windowMs);
-  
-  if (timestamps.length >= max) {
-    return res.status(429).json({
+async function rateLimitAuth(req, res, next) {
+  try {
+    await authLimiter.consume(req.ip);
+    next();
+  } catch {
+    res.status(429).json({
       error: 'Too many requests',
-      message: 'Try again later.',
+      message: 'Too many login attempts. Try again in 60 seconds.',
       retryAfter: 60,
     });
   }
-
-  timestamps.push(now);
-  requests.set(key, timestamps);
-  next();
 }
 
-module.exports = { rateLimitAuth };
+async function rateLimitApi(req, res, next) {
+  try {
+    await apiLimiter.consume(req.ip);
+    next();
+  } catch {
+    res.status(429).json({
+      error: 'Too many requests',
+      message: 'Rate limit exceeded. Try again later.',
+      retryAfter: 60,
+    });
+  }
+}
+
+module.exports = { rateLimitAuth, rateLimitApi };

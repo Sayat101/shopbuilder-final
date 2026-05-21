@@ -1,28 +1,14 @@
-const Redis = require('ioredis');
-const env = require('./env');
+// Redis mock for deployment - replace with real Redis when stable
+const EventEmitter = require('events');
 
-let redis;
-
-if (env.REDIS_URL.startsWith('rediss://')) {
-  redis = new Redis(env.REDIS_URL, {
-    maxRetriesPerRequest: null,
-    enableReadyCheck: false,
-    tls: {
-      rejectUnauthorized: false,
-    },
-    retryStrategy: (times) => {
-      if (times > 3) return null;
-      return Math.min(times * 200, 1000);
-    },
-  });
-} else {
-  redis = new Redis(env.REDIS_URL, {
-    maxRetriesPerRequest: null,
-    enableReadyCheck: false,
-  });
+class MockRedis extends EventEmitter {
+  async get() { return null; }
+  async set() { return 'OK'; }
+  async setex() { return 'OK'; }
+  async del() { return 1; }
+  async quit() { return 'OK'; }
 }
 
-redis.on('connect', () => console.log('✅ Redis connected'));
-redis.on('error', (err) => console.error('Redis error:', err.message));
-
+const redis = new MockRedis();
+console.log('✅ Redis connected (mock mode)');
 module.exports = redis;

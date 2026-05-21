@@ -2,13 +2,15 @@ const { Queue, Worker } = require('bullmq');
 const emailService = require('../services/email.service');
 const env = require('../config/env');
 
+const redisUrl = new URL(env.REDIS_URL);
 const connection = {
-  host: new URL(env.REDIS_URL).hostname,
-  port: parseInt(new URL(env.REDIS_URL).port) || 6379,
+  host: redisUrl.hostname,
+  port: parseInt(redisUrl.port) || 6379,
+  password: redisUrl.password || undefined,
+  username: redisUrl.username || undefined,
   maxRetriesPerRequest: null,
   enableReadyCheck: false,
-  lazyConnect: true,
-  tls: { rejectUnauthorized: false },
+  tls: env.REDIS_URL.startsWith('rediss://') ? { rejectUnauthorized: false } : undefined,
 };
 
 // ─── EMAIL QUEUE ──────────────────────────────────────────────

@@ -17,11 +17,6 @@ const webhookRoutes = require('./routes/webhook.routes');
 const analyticsRoutes = require('./routes/analytics.routes');
 const storefrontRoutes = require('./routes/storefront.routes');
 const abandonedCartRoutes = require('./routes/abandonedCart.routes');
-
-// Start background workers
-require('./workers/email.worker');
-require('./workers/webhook.worker');
-
 const app = express();
 
 // ─── CORS ─────────────────────────────────────────────────────

@@ -45,6 +45,12 @@ app.use(
 );
 app.use('/openapi.yaml', express.static(path.join(__dirname, '../openapi.yaml')));
 
+// Serve frontend
+app.use(express.static(path.join(__dirname, '../frontend')));
+
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, '../frontend/index.html'));
+});
 // ─── HEALTH CHECK ─────────────────────────────────────────────
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });

@@ -1,5 +1,5 @@
 const { prisma } = require('../config/database');
-const { ConflictError } = require('../errors/AppError');
+const { ConflictError, NotFoundError } = require('../errors/AppError');
 
 async function createTenant({ subdomain, plan }) {
   // Check subdomain uniqueness
@@ -29,7 +29,15 @@ async function createTenant({ subdomain, plan }) {
   return tenant;
 }
 
-async function listTenants({ cursor, limit = 20 }) {
+async function listTenants({ cursor, limit = 20, role, tenantId }) {
+  if (role === 'MERCHANT') {
+    const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
+    return {
+      data: tenant ? [tenant] : [],
+      meta: { nextCursor: null, hasMore: false },
+    };
+  }
+
   const take = limit + 1;
   const args = { take, orderBy: { createdAt: 'desc' } };
   if (cursor) {
@@ -47,7 +55,11 @@ async function listTenants({ cursor, limit = 20 }) {
   };
 }
 
-async function getTenant(id) {
+async function getTenant(id, user) {
+  if (user.role === 'MERCHANT' && user.tenantId !== id) {
+    throw new NotFoundError('Tenant not found');
+  }
+
   return prisma.tenant.findUniqueOrThrow({ where: { id } });
 }
 

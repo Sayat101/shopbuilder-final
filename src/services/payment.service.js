@@ -1,6 +1,6 @@
 const { v4: uuidv4 } = require('uuid');
 const { prisma } = require('../config/database');
-const { ConflictError, NotFoundError } = require('../errors/AppError');
+const { ConflictError, NotFoundError, ForbiddenError, ValidationError } = require('../errors/AppError');
 const { queuePaymentReceiptEmail } = require('../workers/email.worker');
 
 /**
@@ -24,6 +24,9 @@ async function processPayment({ orderId, amount, method, idempotencyKey, userId 
 
   const order = await prisma.order.findUnique({ where: { id: orderId } });
   if (!order) throw new NotFoundError('Order not found');
+  if (order.userId !== userId) throw new ForbiddenError('You can only pay your own orders');
+  if (order.totalAmount !== amount) throw new ValidationError('Payment amount does not match order total');
+  if (order.status !== 'PENDING') throw new ConflictError(`Order cannot be paid from status ${order.status}`);
   if (order.status === 'PAID') throw new ConflictError('Order already paid');
 
   const paymentStatus = method === 'MOCK_FAIL' ? 'FAILED' : 'PAID';

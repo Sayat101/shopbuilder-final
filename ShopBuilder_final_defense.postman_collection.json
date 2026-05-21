@@ -1,0 +1,257 @@
+{
+  "info": {
+    "name": "ShopBuilder Final Defense API",
+    "_postman_id": "shopbuilder-final-defense",
+    "description": "Updated collection matching the Express routes implemented in this repository. Use merchantToken for merchant endpoints and customerToken for cart/order/payment endpoints.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3000" },
+    { "key": "merchantToken", "value": "" },
+    { "key": "customerToken", "value": "" },
+    { "key": "refreshToken", "value": "" },
+    { "key": "verifyToken", "value": "" },
+    { "key": "resetToken", "value": "" },
+    { "key": "tenantId", "value": "" },
+    { "key": "subdomain", "value": "aigerim-bags" },
+    { "key": "productId", "value": "" },
+    { "key": "variantId", "value": "" },
+    { "key": "locationId", "value": "" },
+    { "key": "cartId", "value": "" },
+    { "key": "orderId", "value": "" },
+    { "key": "orderAmount", "value": "15000" },
+    { "key": "discountId", "value": "" },
+    { "key": "webhookEndpointId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "1 - Auth",
+      "item": [
+        {
+          "name": "Register Merchant",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/auth/register",
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"merchant@shopbuilder.kz\",\n  \"password\": \"Password123!\",\n  \"role\": \"MERCHANT\",\n  \"subdomain\": \"{{subdomain}}\"\n}" }
+          }
+        },
+        {
+          "name": "Register Customer",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/auth/register",
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"customer@shopbuilder.kz\",\n  \"password\": \"Password123!\",\n  \"role\": \"CUSTOMER\"\n}" }
+          }
+        },
+        { "name": "Verify Email", "request": { "method": "GET", "url": "{{baseUrl}}/auth/verify-email?token={{verifyToken}}" } },
+        {
+          "name": "Login Merchant",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/auth/login",
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"merchant@shopbuilder.kz\",\n  \"password\": \"Password123!\"\n}" }
+          }
+        },
+        {
+          "name": "Login Customer",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/auth/login",
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"customer@shopbuilder.kz\",\n  \"password\": \"Password123!\"\n}" }
+          }
+        },
+        { "name": "Me", "request": { "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{merchantToken}}", "type": "string" }] }, "method": "GET", "url": "{{baseUrl}}/auth/me" } },
+        {
+          "name": "Refresh",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/auth/refresh",
+            "body": { "mode": "raw", "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}" }
+          }
+        },
+        {
+          "name": "Forgot Password",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/auth/forgot-password",
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"merchant@shopbuilder.kz\"\n}" }
+          }
+        },
+        {
+          "name": "Reset Password",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/auth/reset-password",
+            "body": { "mode": "raw", "raw": "{\n  \"token\": \"{{resetToken}}\",\n  \"newPassword\": \"NewPassword123!\"\n}" }
+          }
+        },
+        { "name": "Logout", "request": { "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{merchantToken}}", "type": "string" }] }, "method": "POST", "url": "{{baseUrl}}/auth/logout" } }
+      ]
+    },
+    {
+      "name": "2 - Merchant Catalog",
+      "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{merchantToken}}", "type": "string" }] },
+      "item": [
+        { "name": "List My Tenant", "request": { "method": "GET", "url": "{{baseUrl}}/tenants?limit=20" } },
+        {
+          "name": "Create Product with Variants",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/products",
+            "body": { "mode": "raw", "raw": "{\n  \"title\": \"Sweater\",\n  \"description\": \"Warm winter sweater\",\n  \"price\": 15000,\n  \"options\": {\n    \"colors\": [\"Red\", \"Blue\"],\n    \"sizes\": [\"S\", \"M\", \"L\"],\n    \"materials\": [\"Cotton\"]\n  }\n}" }
+          }
+        },
+        { "name": "List Products", "request": { "method": "GET", "url": "{{baseUrl}}/products?limit=20" } },
+        { "name": "Get Product", "request": { "method": "GET", "url": "{{baseUrl}}/products/{{productId}}" } },
+        { "name": "List Variants", "request": { "method": "GET", "url": "{{baseUrl}}/products/{{productId}}/variants" } },
+        {
+          "name": "Publish Product",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/products/{{productId}}/status",
+            "body": { "mode": "raw", "raw": "{\n  \"status\": \"ACTIVE\"\n}" }
+          }
+        },
+        { "name": "List Warehouse Locations", "request": { "method": "GET", "url": "{{baseUrl}}/products/locations/all" } },
+        {
+          "name": "Adjust Inventory",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/products/inventory/adjust",
+            "body": { "mode": "raw", "raw": "{\n  \"variantId\": \"{{variantId}}\",\n  \"locationId\": \"{{locationId}}\",\n  \"quantity\": 10\n}" }
+          }
+        },
+        {
+          "name": "Update Variant Price",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/products/{{productId}}/variants/{{variantId}}",
+            "body": { "mode": "raw", "raw": "{\n  \"price\": 17000\n}" }
+          }
+        },
+        { "name": "Archive Product", "request": { "method": "DELETE", "url": "{{baseUrl}}/products/{{productId}}" } }
+      ]
+    },
+    {
+      "name": "3 - Storefront",
+      "item": [
+        { "name": "Get Store", "request": { "method": "GET", "url": "{{baseUrl}}/storefront/{{subdomain}}" } },
+        { "name": "List Store Products", "request": { "method": "GET", "url": "{{baseUrl}}/storefront/{{subdomain}}/products?limit=20" } },
+        { "name": "Get Store Product", "request": { "method": "GET", "url": "{{baseUrl}}/storefront/{{subdomain}}/products/{{productId}}" } }
+      ]
+    },
+    {
+      "name": "4 - Customer Cart and Orders",
+      "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{customerToken}}", "type": "string" }] },
+      "item": [
+        { "name": "Get Cart", "request": { "method": "GET", "url": "{{baseUrl}}/cart" } },
+        {
+          "name": "Add Item",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/cart/items",
+            "body": { "mode": "raw", "raw": "{\n  \"variantId\": \"{{variantId}}\",\n  \"quantity\": 1\n}" }
+          }
+        },
+        {
+          "name": "Update Item Quantity",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/cart/items/{{variantId}}",
+            "body": { "mode": "raw", "raw": "{\n  \"quantity\": 2\n}" }
+          }
+        },
+        { "name": "Remove Item", "request": { "method": "DELETE", "url": "{{baseUrl}}/cart/items/{{variantId}}" } },
+        {
+          "name": "Place Order",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/orders",
+            "body": { "mode": "raw", "raw": "{\n  \"tenantId\": \"{{tenantId}}\",\n  \"shippingAddress\": {\n    \"name\": \"Aigerim Bekova\",\n    \"street\": \"Abay Ave 10\",\n    \"city\": \"Almaty\",\n    \"country\": \"KZ\",\n    \"zip\": \"050000\"\n  }\n}" }
+          }
+        },
+        { "name": "My Orders", "request": { "method": "GET", "url": "{{baseUrl}}/orders?limit=20" } },
+        { "name": "Get Order", "request": { "method": "GET", "url": "{{baseUrl}}/orders/{{orderId}}" } },
+        {
+          "name": "Pay Order",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/payments/checkout",
+            "body": { "mode": "raw", "raw": "{\n  \"orderId\": \"{{orderId}}\",\n  \"amount\": {{orderAmount}},\n  \"method\": \"MOCK_CARD\",\n  \"idempotencyKey\": \"idem-{{orderId}}\"\n}" }
+          }
+        },
+        { "name": "Order Timeline", "request": { "method": "GET", "url": "{{baseUrl}}/orders/{{orderId}}/timeline" } },
+        { "name": "Refund Order", "request": { "method": "POST", "url": "{{baseUrl}}/orders/{{orderId}}/refund" } },
+        { "name": "Cancel Order", "request": { "method": "PATCH", "url": "{{baseUrl}}/orders/{{orderId}}/cancel" } }
+      ]
+    },
+    {
+      "name": "5 - Merchant Orders Analytics Discounts Webhooks",
+      "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{merchantToken}}", "type": "string" }] },
+      "item": [
+        { "name": "Tenant Orders", "request": { "method": "GET", "url": "{{baseUrl}}/orders/all?limit=20" } },
+        {
+          "name": "Update Order Status",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/orders/{{orderId}}/status",
+            "body": { "mode": "raw", "raw": "{\n  \"status\": \"FULFILLED\"\n}" }
+          }
+        },
+        { "name": "Analytics Overview", "request": { "method": "GET", "url": "{{baseUrl}}/analytics/overview" } },
+        { "name": "Analytics Inventory", "request": { "method": "GET", "url": "{{baseUrl}}/analytics/inventory" } },
+        { "name": "Analytics Revenue", "request": { "method": "GET", "url": "{{baseUrl}}/analytics/revenue" } },
+        {
+          "name": "Create Discount",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/discounts",
+            "body": { "mode": "raw", "raw": "{\n  \"code\": \"SAVE20\",\n  \"type\": \"PERCENTAGE\",\n  \"value\": 20,\n  \"isStackable\": false,\n  \"maxUsage\": 100\n}" }
+          }
+        },
+        { "name": "List Discounts", "request": { "method": "GET", "url": "{{baseUrl}}/discounts" } },
+        { "name": "Delete Discount", "request": { "method": "DELETE", "url": "{{baseUrl}}/discounts/{{discountId}}" } },
+        {
+          "name": "Register Webhook Endpoint",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/webhooks/endpoints",
+            "body": { "mode": "raw", "raw": "{\n  \"url\": \"https://webhook.site/your-id\",\n  \"events\": [\"order.created\", \"order.paid\", \"order.fulfilled\"]\n}" }
+          }
+        },
+        { "name": "List Webhook Endpoints", "request": { "method": "GET", "url": "{{baseUrl}}/webhooks/endpoints" } },
+        { "name": "Test Webhook", "request": { "method": "POST", "url": "{{baseUrl}}/webhooks/endpoints/{{webhookEndpointId}}/test" } },
+        { "name": "Webhook Deliveries", "request": { "method": "GET", "url": "{{baseUrl}}/webhooks/deliveries" } },
+        { "name": "Delete Webhook Endpoint", "request": { "method": "DELETE", "url": "{{baseUrl}}/webhooks/endpoints/{{webhookEndpointId}}" } },
+        { "name": "Abandoned Carts", "request": { "method": "GET", "url": "{{baseUrl}}/cart/abandoned" } },
+        { "name": "Recover Abandoned Cart", "request": { "method": "POST", "url": "{{baseUrl}}/cart/abandoned/{{cartId}}/recover" } }
+      ]
+    },
+    {
+      "name": "6 - Public Checks",
+      "item": [
+        { "name": "Health", "request": { "method": "GET", "url": "{{baseUrl}}/health" } },
+        { "name": "Swagger Docs", "request": { "method": "GET", "url": "{{baseUrl}}/docs" } },
+        { "name": "OpenAPI YAML", "request": { "method": "GET", "url": "{{baseUrl}}/openapi.yaml" } }
+      ]
+    }
+  ]
+}

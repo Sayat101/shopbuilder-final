@@ -2,6 +2,7 @@ const { z } = require('zod');
 const productService = require('../services/product.service');
 const asyncHandler = require('../utils/asyncHandler');
 const { prisma } = require('../config/database');
+const { NotFoundError } = require('../errors/AppError');
 
 const createSchema = z.object({
   title: z.string().min(1).max(255),
@@ -53,7 +54,7 @@ const adjustInventory = asyncHandler(async (req, res) => {
     quantity: z.number().int(),
   }).parse(req.body);
 
-  const level = await productService.adjustInventory(data);
+  const level = await productService.adjustInventory({ ...data, tenantId: req.user.tenantId });
   res.json({ inventoryLevel: level });
 });
 
@@ -61,6 +62,11 @@ const adjustInventory = asyncHandler(async (req, res) => {
 async function update(req, res, next) {
   try {
     const { title, description } = req.body;
+    const existing = await prisma.product.findFirst({
+      where: { id: req.params.id, tenantId: req.user.tenantId },
+    });
+    if (!existing) throw new NotFoundError('Product not found');
+
     const product = await prisma.product.update({
       where: { id: req.params.id },
       data: { title, description },
@@ -74,6 +80,11 @@ async function update(req, res, next) {
 // Архивировать продукт
 async function archive(req, res, next) {
   try {
+    const existing = await prisma.product.findFirst({
+      where: { id: req.params.id, tenantId: req.user.tenantId },
+    });
+    if (!existing) throw new NotFoundError('Product not found');
+
     const product = await prisma.product.update({
       where: { id: req.params.id },
       data: { status: 'ARCHIVED' },
@@ -88,7 +99,7 @@ async function archive(req, res, next) {
 async function getVariants(req, res, next) {
   try {
     const variants = await prisma.productVariant.findMany({
-      where: { productId: req.params.id },
+      where: { productId: req.params.id, product: { tenantId: req.user.tenantId } },
       include: { inventory: true },
     });
     res.json({ variants });
@@ -101,6 +112,11 @@ async function getVariants(req, res, next) {
 async function updateVariant(req, res, next) {
   try {
     const { price } = req.body;
+    const existing = await prisma.productVariant.findFirst({
+      where: { id: req.params.variantId, productId: req.params.id, product: { tenantId: req.user.tenantId } },
+    });
+    if (!existing) throw new NotFoundError('Product variant not found');
+
     const variant = await prisma.productVariant.update({
       where: { id: req.params.variantId },
       data: { price },

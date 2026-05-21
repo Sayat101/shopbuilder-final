@@ -27,7 +27,10 @@ async function placeOrder(userId, { tenantId, shippingAddress }) {
       items: {
         include: {
           variant: {
-            include: { inventory: true },
+            include: {
+              inventory: true,
+              product: { select: { tenantId: true, title: true } },
+            },
           },
         },
       },
@@ -36,6 +39,11 @@ async function placeOrder(userId, { tenantId, shippingAddress }) {
 
   if (!cart || cart.items.length === 0) {
     throw new ValidationError('Cart is empty — add items before placing an order');
+  }
+
+  const hasForeignTenantItem = cart.items.some((item) => item.variant.product.tenantId !== tenantId);
+  if (hasForeignTenantItem) {
+    throw new ValidationError('Cart contains items from a different tenant');
   }
 
   // Pre-flight stock check (fast fail before hitting the transaction)

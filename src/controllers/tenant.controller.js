@@ -17,12 +17,14 @@ const list = asyncHandler(async (req, res) => {
   const result = await tenantService.listTenants({
     cursor: req.query.cursor,
     limit: parseInt(req.query.limit) || 20,
+    role: req.user.role,
+    tenantId: req.user.tenantId,
   });
   res.json(result);
 });
 
 const getOne = asyncHandler(async (req, res) => {
-  const tenant = await tenantService.getTenant(req.params.id);
+  const tenant = await tenantService.getTenant(req.params.id, req.user);
   res.json({ tenant });
 });
 

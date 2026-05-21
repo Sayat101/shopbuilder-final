@@ -6,7 +6,7 @@ WORKDIR /app
 
 COPY package*.json ./
 
-RUN npm install
+RUN npm ci --omit=dev
 
 COPY prisma ./prisma
 
@@ -17,8 +17,6 @@ ENV PORT=3000
 ENV NODE_ENV=production
 ENV JWT_EXPIRES_IN=15m
 ENV JWT_REFRESH_EXPIRES_IN=7d
-ENV MOCK_PAYMENT_SECRET=mockpaymentsecret2024
-ENV APP_URL=https://sayat101-shopbuilder-app.kazi.rocks
 EXPOSE 3000
 
 CMD ["sh", "-c", "npx prisma migrate deploy && node src/server.js"]

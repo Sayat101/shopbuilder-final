@@ -2,65 +2,909 @@ openapi: 3.0.3
 info:
   title: ShopBuilder API
   version: 1.0.0
-  description: SaaS e-commerce platform API for Kazakh merchants
-
+  description: Final defense API contract for the ShopBuilder multi-tenant ecommerce demo.
 servers:
-  - url: https://{subdomain}.shopbuilder.kz/api/v1
-    variables:
-      subdomain:
-        default: demo
+  - url: http://localhost:3000
+    description: Local backend
+  - url: https://shopbuilder.onrender.com
+    description: Deployed backend
+tags:
+  - name: Auth
+  - name: Tenants
+  - name: Products
+  - name: Storefront
+  - name: Cart
+  - name: Orders
+  - name: Payments
+  - name: Discounts
+  - name: Analytics
+  - name: Webhooks
+  - name: Health
+paths:
+  /health:
+    get:
+      tags: [Health]
+      summary: Health check
+      responses:
+        '200':
+          description: Service is running
+          content:
+            application/json:
+              example:
+                status: ok
+                timestamp: '2026-05-21T17:00:00.000Z'
 
-security:
-  - BearerAuth: []
+  /auth/register:
+    post:
+      tags: [Auth]
+      summary: Register a merchant or customer and queue verification email
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+            examples:
+              merchant:
+                value:
+                  email: merchant@shopbuilder.kz
+                  password: Password123!
+                  role: MERCHANT
+                  subdomain: aigerim-bags
+              customer:
+                value:
+                  email: customer@shopbuilder.kz
+                  password: Password123!
+                  role: CUSTOMER
+      responses:
+        '201':
+          description: User registered; verification email queued
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /auth/verify-email:
+    get:
+      tags: [Auth]
+      summary: Verify email using token from email link
+      parameters:
+        - in: query
+          name: token
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Email verified
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Login verified user and issue access and refresh tokens
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            example:
+              email: merchant@shopbuilder.kz
+              password: Password123!
+      responses:
+        '200':
+          description: Tokens issued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/refresh:
+    post:
+      tags: [Auth]
+      summary: Rotate refresh token and issue new tokens
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example:
+              refreshToken: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+      responses:
+        '200':
+          description: New tokens issued
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Revoke current refresh token
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Logged out
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/me:
+    get:
+      tags: [Auth]
+      summary: Return authenticated user claims
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Current user
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/forgot-password:
+    post:
+      tags: [Auth]
+      summary: Queue password reset email
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example:
+              email: merchant@shopbuilder.kz
+      responses:
+        '200':
+          description: Reset email queued if the account exists
+
+  /auth/reset-password:
+    post:
+      tags: [Auth]
+      summary: Reset password using emailed token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example:
+              token: 4d2e8a46-3aa0-4b2f-a1d0-f9a51bb10d94
+              newPassword: NewPassword123!
+      responses:
+        '200':
+          description: Password changed
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /tenants:
+    get:
+      tags: [Tenants]
+      summary: List tenants; merchants only see their own tenant
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Cursor-paginated tenants
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      tags: [Tenants]
+      summary: Create tenant manually (SUPER_ADMIN)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example:
+              subdomain: nukus-top
+              plan: PRO
+      responses:
+        '201':
+          description: Tenant created
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /tenants/{id}:
+    get:
+      tags: [Tenants]
+      summary: Get tenant details
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Tenant
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /products:
+    get:
+      tags: [Products]
+      summary: List authenticated tenant products
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Cursor-paginated products
+    post:
+      tags: [Products]
+      summary: Create product and generate Size x Color x Material variant matrix
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateProductRequest'
+            example:
+              title: Sweater
+              description: Warm winter sweater
+              price: 15000
+              options:
+                colors: [Red, Blue]
+                sizes: [S, M, L]
+                materials: [Cotton]
+      responses:
+        '201':
+          description: Product with generated variants
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /products/{id}:
+    get:
+      tags: [Products]
+      summary: Get product by id
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Product
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [Products]
+      summary: Update product title or description
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example:
+              title: Premium Sweater
+              description: Updated description
+      responses:
+        '200':
+          description: Product updated
+    delete:
+      tags: [Products]
+      summary: Archive product
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Product archived
+
+  /products/{id}/status:
+    patch:
+      tags: [Products]
+      summary: Change product status
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example:
+              status: ACTIVE
+      responses:
+        '200':
+          description: Status updated
+
+  /products/{id}/variants:
+    get:
+      tags: [Products]
+      summary: List product variants
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Variants
+
+  /products/{id}/variants/{variantId}:
+    patch:
+      tags: [Products]
+      summary: Update variant price
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Id'
+        - in: path
+          name: variantId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example:
+              price: 17000
+      responses:
+        '200':
+          description: Variant updated
+
+  /products/inventory/adjust:
+    post:
+      tags: [Products]
+      summary: Adjust inventory level for a variant and warehouse
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example:
+              variantId: cm123variant
+              locationId: cm123warehouse
+              quantity: 10
+      responses:
+        '200':
+          description: Inventory adjusted
+
+  /products/locations/all:
+    get:
+      tags: [Products]
+      summary: List tenant warehouse locations
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Warehouse locations
+
+  /storefront/{subdomain}:
+    get:
+      tags: [Storefront]
+      summary: Get public storefront metadata
+      parameters:
+        - $ref: '#/components/parameters/Subdomain'
+      responses:
+        '200':
+          description: Storefront metadata
+
+  /storefront/{subdomain}/products:
+    get:
+      tags: [Storefront]
+      summary: List active public products
+      parameters:
+        - $ref: '#/components/parameters/Subdomain'
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Cursor-paginated active products
+
+  /storefront/{subdomain}/products/{productId}:
+    get:
+      tags: [Storefront]
+      summary: Get public product
+      parameters:
+        - $ref: '#/components/parameters/Subdomain'
+        - in: path
+          name: productId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Product
+
+  /cart:
+    get:
+      tags: [Cart]
+      summary: Get or create current customer cart
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Cart
+    delete:
+      tags: [Cart]
+      summary: Clear current customer cart
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Cart cleared
+
+  /cart/items:
+    post:
+      tags: [Cart]
+      summary: Add variant to current cart
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example:
+              variantId: cm123variant
+              quantity: 2
+      responses:
+        '201':
+          description: Cart updated
+
+  /cart/items/{variantId}:
+    patch:
+      tags: [Cart]
+      summary: Update cart item quantity; 0 removes item
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: variantId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example:
+              quantity: 3
+      responses:
+        '200':
+          description: Cart updated
+    delete:
+      tags: [Cart]
+      summary: Remove cart item
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: variantId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Cart updated
+
+  /cart/abandoned:
+    get:
+      tags: [Cart]
+      summary: List abandoned carts for merchant tenant
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Abandoned carts
+
+  /cart/abandoned/{cartId}/recover:
+    post:
+      tags: [Cart]
+      summary: Queue abandoned cart recovery email
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: cartId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Recovery email queued
+
+  /orders:
+    get:
+      tags: [Orders]
+      summary: List current customer's orders
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Customer orders
+    post:
+      tags: [Orders]
+      summary: Place an order from current cart
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PlaceOrderRequest'
+      responses:
+        '201':
+          description: Order placed and emails queued
+
+  /orders/all:
+    get:
+      tags: [Orders]
+      summary: List tenant orders for merchant
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum: [PENDING, PAID, FULFILLED, REFUNDED, CANCELLED]
+      responses:
+        '200':
+          description: Tenant orders
+
+  /orders/{id}:
+    get:
+      tags: [Orders]
+      summary: Get order; customers can only access their own
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Order
+
+  /orders/{id}/status:
+    patch:
+      tags: [Orders]
+      summary: Move order through valid state transition
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example:
+              status: FULFILLED
+      responses:
+        '200':
+          description: Status updated
+
+  /orders/{id}/cancel:
+    patch:
+      tags: [Orders]
+      summary: Cancel own pending order
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      requestBody:
+        content:
+          application/json:
+            example:
+              reason: Changed my mind
+      responses:
+        '200':
+          description: Order cancelled
+
+  /orders/{id}/refund:
+    post:
+      tags: [Orders]
+      summary: Refund own paid or fulfilled order
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Refund processed
+
+  /orders/{id}/timeline:
+    get:
+      tags: [Orders]
+      summary: Get order audit timeline
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Timeline
+
+  /payments/checkout:
+    post:
+      tags: [Payments]
+      summary: Process mock card payment with idempotency
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example:
+              orderId: cm123order
+              amount: 30000
+              method: MOCK_CARD
+              idempotencyKey: idem-cm123order
+      responses:
+        '200':
+          description: Payment result
+
+  /discounts:
+    get:
+      tags: [Discounts]
+      summary: List merchant discount codes
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Discount codes
+    post:
+      tags: [Discounts]
+      summary: Create discount code
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example:
+              code: SAVE20
+              type: PERCENTAGE
+              value: 20
+              isStackable: false
+              maxUsage: 100
+      responses:
+        '201':
+          description: Discount created
+
+  /discounts/{id}:
+    delete:
+      tags: [Discounts]
+      summary: Delete discount code
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Discount deleted
+
+  /discounts/apply:
+    post:
+      tags: [Discounts]
+      summary: Preview discount, VAT, and total
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example:
+              code: SAVE20
+              orderAmount: 30000
+      responses:
+        '200':
+          description: Discount calculation
+
+  /analytics/overview:
+    get:
+      tags: [Analytics]
+      summary: Cached tenant overview analytics
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Overview analytics
+
+  /analytics/inventory:
+    get:
+      tags: [Analytics]
+      summary: Cached tenant inventory analytics
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Inventory analytics
+
+  /analytics/revenue:
+    get:
+      tags: [Analytics]
+      summary: Cached 30-day revenue by day
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Revenue by day
+
+  /webhooks/endpoints:
+    get:
+      tags: [Webhooks]
+      summary: List webhook endpoints
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Webhook endpoints
+    post:
+      tags: [Webhooks]
+      summary: Register webhook endpoint and generate HMAC secret
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example:
+              url: https://webhook.site/your-id
+              events: [order.created, order.paid, order.fulfilled]
+      responses:
+        '201':
+          description: Endpoint registered
+
+  /webhooks/endpoints/{id}:
+    delete:
+      tags: [Webhooks]
+      summary: Delete webhook endpoint
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Endpoint deleted
+
+  /webhooks/endpoints/{id}/test:
+    post:
+      tags: [Webhooks]
+      summary: Queue test webhook delivery
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Test delivery queued
+
+  /webhooks/deliveries:
+    get:
+      tags: [Webhooks]
+      summary: List recent webhook delivery attempts
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Webhook deliveries
 
 components:
   securitySchemes:
-    BearerAuth:
+    bearerAuth:
       type: http
       scheme: bearer
       bearerFormat: JWT
-
   parameters:
-    cursorParam:
-      name: cursor
-      in: query
+    Id:
+      in: path
+      name: id
+      required: true
       schema:
         type: string
-      description: Cursor for next page (from previous response)
-    limitParam:
-      name: limit
+    Subdomain:
+      in: path
+      name: subdomain
+      required: true
+      schema:
+        type: string
+      example: aigerim-bags
+    Cursor:
       in: query
+      name: cursor
+      schema:
+        type: string
+    Limit:
+      in: query
+      name: limit
       schema:
         type: integer
         default: 20
-        maximum: 250
-
+        maximum: 100
   schemas:
-    Subscription:
+    RegisterRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+        role:
+          type: string
+          enum: [MERCHANT, CUSTOMER, STAFF, DEVELOPER]
+        subdomain:
+          type: string
+          description: Required for MERCHANT registration
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+    AuthResponse:
       type: object
       properties:
-        id:
+        user:
+          type: object
+          properties:
+            id: { type: string }
+            email: { type: string }
+            role: { type: string }
+            tenantId: { type: string }
+        accessToken:
           type: string
-          example: clxsub9001
-        planId:
+        refreshToken:
           type: string
-        status:
-          type: string
-          enum: [ACTIVE, PAUSED, CANCELLED, DUNNING]
-        currentPeriodStart:
-          type: string
-          format: date-time
-        currentPeriodEnd:
-          type: string
-          format: date-time
-        failedPaymentCount:
+    CreateProductRequest:
+      type: object
+      required: [title, price]
+      properties:
+        title: { type: string }
+        description: { type: string }
+        price:
           type: integer
-          example: 0
-          description: Cancelled after 3 failures (dunning)
-        createdAt:
-          type: string
-          format: date-time
-
+          description: Price in tiyn
+        options:
+          type: object
+          properties:
+            colors:
+              type: array
+              items: { type: string }
+            sizes:
+              type: array
+              items: { type: string }
+            materials:
+              type: array
+              items: { type: string }
+        locationId: { type: string }
+    PlaceOrderRequest:
+      type: object
+      required: [tenantId, shippingAddress]
+      properties:
+        tenantId: { type: string }
+        shippingAddress:
+          type: object
+          required: [name, street, city, country, zip]
+          properties:
+            name: { type: string }
+            street: { type: string }
+            city: { type: string }
+            country:
+              type: string
+              example: KZ
+            zip: { type: string }
     Error:
       type: object
       properties:
@@ -68,2003 +912,42 @@ components:
           type: string
         message:
           type: string
-        statusCode:
-          type: integer
-
-    PaginatedMeta:
-      type: object
-      properties:
-        nextCursor:
-          type: string
-          nullable: true
-        hasMore:
-          type: boolean
-        limit:
-          type: integer
-
-    Product:
-      type: object
-      properties:
-        id:
-          type: string
-          example: clx1abc123
-        title:
-          type: string
-          example: Handmade Shyrdak Rug
-        status:
-          type: string
-          enum: [DRAFT, ACTIVE, ARCHIVED]
-        variants:
+        details:
           type: array
           items:
-            $ref: '#/components/schemas/ProductVariant'
-        createdAt:
-          type: string
-          format: date-time
-
-    ProductVariant:
-      type: object
-      properties:
-        id:
-          type: string
-        sku:
-          type: string
-          example: RUG-RED-L-WOOL
-        price:
-          type: integer
-          description: Price in tiyn (KZT minor unit)
-          example: 1500000
-        option1Value:
-          type: string
-          example: Red
-        option2Value:
-          type: string
-          example: Large
-        available:
-          type: integer
-          example: 12
-
-    Order:
-      type: object
-      properties:
-        id:
-          type: string
-        orderNumber:
-          type: integer
-          example: 1042
-        status:
-          type: string
-          enum: [PENDING, PAID, FULFILLED, REFUNDED, CANCELLED]
-        totalAmount:
-          type: integer
-          example: 3200000
-        currency:
-          type: string
-          example: KZT
-        createdAt:
-          type: string
-          format: date-time
-
-    CartItem:
-      type: object
-      properties:
-        variantId:
-          type: string
-        quantity:
-          type: integer
-          minimum: 1
-
-paths:
-
-  # AUTH
-  /auth/register:
-    post:
-      tags: [Auth]
-      summary: Register customer account
-      security: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [email, password]
-              properties:
-                email:
-                  type: string
-                  format: email
-                password:
-                  type: string
-                  minLength: 8
-      responses:
-        '201':
-          description: Account created
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  accessToken:
-                    type: string
-                  refreshToken:
-                    type: string
-        '400':
-          description: Bad request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '409':
-          description: Email already registered
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '422':
-          description: Validation error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-
-  /auth/login:
-    post:
-      tags: [Auth]
-      summary: Login
-      security: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [email, password]
-              properties:
-                email:
-                  type: string
-                  format: email
-                password:
-                  type: string
-      responses:
-        '200':
-          description: Tokens returned
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  accessToken:
-                    type: string
-                  refreshToken:
-                    type: string
-        '400':
-          description: Bad request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '401':
-          description: Invalid credentials
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '404':
-          description: User not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '422':
-          description: Validation error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '429':
-          description: Too many attempts
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-
-  /auth/refresh:
-    post:
-      tags: [Auth]
-      summary: Refresh access token
-      security: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [refreshToken]
-              properties:
-                refreshToken:
-                  type: string
-      responses:
-        '200':
-          description: New access token
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  accessToken:
-                    type: string
-        '400':
-          description: Bad request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '401':
-          description: Invalid or expired refresh token
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '404':
-          description: Token not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '422':
-          description: Validation error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-
-  # PRODUCTS
-
-  /auth/verify-email:
-    get:
-      tags: [Auth]
-      summary: Verify email address
-      description: Verify user email using token from verification email. Required before login.
-      security: []
-      parameters:
-        - name: token
-          in: query
-          required: true
-          schema:
-            type: string
-            format: uuid
-          description: Verification token from email link
-      responses:
-        '200':
-          description: Email verified successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                    example: Email verified successfully. You can now log in.
-        '400':
-          description: Invalid or expired token
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-
-  /auth/forgot-password:
-    post:
-      tags: [Auth]
-      summary: Request password reset email
-      description: Sends a password reset link to the user's email. Always returns success to prevent email enumeration.
-      security: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [email]
-              properties:
-                email:
-                  type: string
-                  format: email
-                  example: merchant@shopbuilder.kz
-      responses:
-        '200':
-          description: Reset email sent (or email not found — always returns success)
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                    example: If that email exists, a reset link has been sent.
-        '429':
-          description: Too many requests
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-
-  /auth/reset-password:
-    post:
-      tags: [Auth]
-      summary: Reset password using token
-      description: Reset password using the token from the password reset email. Token expires in 1 hour.
-      security: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [token, newPassword]
-              properties:
-                token:
-                  type: string
-                  format: uuid
-                  example: 550e8400-e29b-41d4-a716-446655440000
-                newPassword:
-                  type: string
-                  minLength: 8
-                  example: NewPassword123!
-      responses:
-        '200':
-          description: Password reset successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                    example: Password reset successfully. You can now log in.
-        '400':
-          description: Invalid or expired token
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-
-  /auth/logout:
-    post:
-      tags: [Auth]
-      summary: Logout current user
-      description: Revokes the refresh token in Redis. User must login again to get new tokens.
-      security:
-        - BearerAuth: []
-      responses:
-        '200':
-          description: Logged out successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                    example: Logged out successfully.
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-
-  /auth/me:
-    get:
-      tags: [Auth]
-      summary: Get current user info
-      description: Returns the currently authenticated user from JWT token.
-      security:
-        - BearerAuth: []
-      responses:
-        '200':
-          description: Current user info
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  user:
-                    type: object
-                    properties:
-                      id:
-                        type: string
-                        example: clx1abc123
-                      email:
-                        type: string
-                        example: merchant@shopbuilder.kz
-                      role:
-                        type: string
-                        enum: [SUPER_ADMIN, MERCHANT, CUSTOMER, STAFF, DEVELOPER]
-                      tenantId:
-                        type: string
-                        example: clx1tenant123
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-
-  /products:
-    get:
-      tags: [Products]
-      summary: List products (cursor-based pagination)
-      parameters:
-        - $ref: '#/components/parameters/cursorParam'
-        - $ref: '#/components/parameters/limitParam'
-        - name: status
-          in: query
-          schema:
-            type: string
-            enum: [DRAFT, ACTIVE, ARCHIVED]
-        - name: sort
-          in: query
-          schema:
-            type: string
-            example: -createdAt
-      responses:
-        '200':
-          description: Product list
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/Product'
-                  meta:
-                    $ref: '#/components/schemas/PaginatedMeta'
-        '400':
-          description: Bad request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '404':
-          description: Not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '422':
-          description: Validation error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-
-    post:
-      tags: [Products]
-      summary: Create product with variants
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [title, variants]
-              properties:
-                title:
-                  type: string
-                description:
-                  type: string
-                variants:
-                  type: array
-                  items:
-                    type: object
-                    properties:
-                      price:
-                        type: integer
-                      option1Value:
-                        type: string
-                      option2Value:
-                        type: string
-      responses:
-        '201':
-          description: Product created
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Product'
-        '400':
-          description: Bad request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '404':
-          description: Not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '409':
-          description: SKU already exists
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '422':
-          description: Validation error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-
-  /products/import:
-    post:
-      tags: [Products]
-      summary: Bulk import products from CSV (all-or-nothing transaction)
-      requestBody:
-        required: true
-        content:
-          multipart/form-data:
-            schema:
-              type: object
-              required: [file]
-              properties:
-                file:
-                  type: string
-                  format: binary
-                  description: CSV with columns title,sku,price,option1,option2,stock
-      responses:
-        '200':
-          description: Import result
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  imported:
-                    type: integer
-                    example: 47
-                  skipped:
-                    type: integer
-                    example: 2
-                  errors:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        row:
-                          type: integer
-                        message:
-                          type: string
-        '400':
-          description: Invalid CSV format
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '404':
-          description: Not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '409':
-          description: Duplicate SKU detected - entire import rolled back
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '422':
-          description: Validation error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-
-  /products/{id}:
-    get:
-      tags: [Products]
-      summary: Get single product
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Product details
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Product'
-        '400':
-          description: Bad request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '404':
-          description: Not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '422':
-          description: Validation error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-
-    patch:
-      tags: [Products]
-      summary: Update product
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                title:
-                  type: string
-                status:
-                  type: string
-                  enum: [DRAFT, ACTIVE, ARCHIVED]
-      responses:
-        '200':
-          description: Updated product
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Product'
-        '400':
-          description: Bad request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '404':
-          description: Not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '422':
-          description: Validation error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-
-    delete:
-      tags: [Products]
-      summary: Archive product
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        '204':
-          description: Archived
-        '400':
-          description: Bad request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '404':
-          description: Not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '422':
-          description: Validation error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-
-  # ORDERS
-  /orders:
-    get:
-      tags: [Orders]
-      summary: List orders
-      parameters:
-        - $ref: '#/components/parameters/cursorParam'
-        - $ref: '#/components/parameters/limitParam'
-        - name: status
-          in: query
-          schema:
-            type: string
-        - name: sort
-          in: query
-          schema:
-            type: string
-            example: -createdAt
-      responses:
-        '200':
-          description: Order list
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/Order'
-                  meta:
-                    $ref: '#/components/schemas/PaginatedMeta'
-        '400':
-          description: Bad request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '404':
-          description: Not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '422':
-          description: Validation error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-
-  /orders/{id}:
-    get:
-      tags: [Orders]
-      summary: Get order details
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Order details
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Order'
-        '400':
-          description: Bad request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '404':
-          description: Not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '422':
-          description: Validation error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-
-  /orders/{id}/refund:
-    post:
-      tags: [Orders]
-      summary: Issue refund
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                amount:
-                  type: integer
-                  description: Amount in tiyn (omit for full refund)
-                reason:
-                  type: string
-      responses:
-        '200':
-          description: Refund initiated
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  refundId:
-                    type: string
-                  status:
-                    type: string
-                    enum: [PENDING, PROCESSED]
-                  amount:
-                    type: integer
-        '400':
-          description: Cannot refund (wrong status or expired)
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '404':
-          description: Order not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '409':
-          description: Already refunded
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '422':
-          description: Validation error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '500':
-          description: Payment provider error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-
-  # CHECKOUT
-  /checkout:
-    post:
-      tags: [Checkout]
-      summary: Create checkout session (locks inventory)
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [items]
-              properties:
-                items:
-                  type: array
-                  items:
-                    $ref: '#/components/schemas/CartItem'
-                discountCode:
-                  type: string
-                addressId:
-                  type: string
-      responses:
-        '201':
-          description: Checkout session created
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  checkoutId:
-                    type: string
-                  totalAmount:
-                    type: integer
-                  discountAmount:
-                    type: integer
-                  taxAmount:
-                    type: integer
-                  expiresAt:
-                    type: string
-                    format: date-time
-        '400':
-          description: Out of stock or invalid items
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '404':
-          description: Product or variant not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '409':
-          description: Discount code conflict
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '422':
-          description: Validation error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-
-  # INVENTORY
-  /inventory:
-    get:
-      tags: [Inventory]
-      summary: Get stock levels
-      parameters:
-        - $ref: '#/components/parameters/cursorParam'
-        - $ref: '#/components/parameters/limitParam'
-        - name: locationId
-          in: query
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Inventory levels
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        variantId:
-                          type: string
-                        locationId:
-                          type: string
-                        available:
-                          type: integer
-                        reserved:
-                          type: integer
-                  meta:
-                    $ref: '#/components/schemas/PaginatedMeta'
-        '400':
-          description: Bad request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '404':
-          description: Location not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '422':
-          description: Validation error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-
-  /inventory/adjust:
-    post:
-      tags: [Inventory]
-      summary: Adjust stock count
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [variantId, locationId, delta]
-              properties:
-                variantId:
-                  type: string
-                locationId:
-                  type: string
-                delta:
-                  type: integer
-                  description: Positive to add, negative to remove
-      responses:
-        '200':
-          description: Stock updated
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  variantId:
-                    type: string
-                  locationId:
-                    type: string
-                  available:
-                    type: integer
-        '400':
-          description: Would result in negative stock
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '404':
-          description: Variant or location not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '409':
-          description: Conflict
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '422':
-          description: Validation error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-
-  # WEBHOOKS
-  /webhooks:
-    get:
-      tags: [Webhooks]
-      summary: List webhook endpoints
-      parameters:
-        - $ref: '#/components/parameters/cursorParam'
-        - $ref: '#/components/parameters/limitParam'
-      responses:
-        '200':
-          description: Webhook endpoints
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        id:
-                          type: string
-                        url:
-                          type: string
-                        events:
-                          type: array
-                          items:
-                            type: string
-                        createdAt:
-                          type: string
-                          format: date-time
-                  meta:
-                    $ref: '#/components/schemas/PaginatedMeta'
-        '400':
-          description: Bad request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '404':
-          description: Not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-
-    post:
-      tags: [Webhooks]
-      summary: Create webhook endpoint
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [url, events]
-              properties:
-                url:
-                  type: string
-                  format: uri
-                events:
-                  type: array
-                  items:
-                    type: string
-                    enum:
-                      - order.created
-                      - order.fulfilled
-                      - order.cancelled
-                      - inventory.updated
-                      - payment.success
-                      - payment.failed
-      responses:
-        '201':
-          description: Endpoint created
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  id:
-                    type: string
-                  url:
-                    type: string
-                  secret:
-                    type: string
-                    description: HMAC signing secret (shown once)
-        '400':
-          description: Max 5 endpoints reached
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '404':
-          description: Not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '422':
-          description: Validation error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-
-  # PAYMENTS
-  /payments/checkout:
-    post:
-      tags: [Payments]
-      summary: Process payment via mock provider
-      security:
-        - BearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [orderId, amount, method, idempotencyKey]
-              properties:
-                orderId:
-                  type: string
-                  example: clx123abc
-                amount:
-                  type: integer
-                  description: Amount in tiyn
-                  example: 150000
-                method:
-                  type: string
-                  enum: [MOCK_CARD, MOCK_FAIL]
-                  example: MOCK_CARD
-                idempotencyKey:
-                  type: string
-                  example: idem_abc123
-      responses:
-        '200':
-          description: Payment processed
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  paymentId:
-                    type: string
-                    example: pay_abc123
-                  status:
-                    type: string
-                    enum: [SUCCESS, FAILED]
-                  amount:
-                    type: integer
-                    example: 150000
-                  method:
-                    type: string
-                    example: MOCK_CARD
-                  transactedAt:
-                    type: string
-                    format: date-time
-        '400':
-          description: Bad request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '404':
-          description: Order not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '409':
-          description: Order already paid or idempotency key conflict
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '422':
-          description: Validation error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-
-  /payments/webhook/mock:
-    post:
-      tags: [Payments]
-      summary: Simulated payment callback (mock provider notifies server)
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [paymentId, orderId, status]
-              properties:
-                paymentId:
-                  type: string
-                  example: pay_abc123
-                orderId:
-                  type: string
-                  example: clx123abc
-                status:
-                  type: string
-                  enum: [SUCCESS, FAILED]
-                amount:
-                  type: integer
-                  example: 150000
-      responses:
-        '200':
-          description: Callback received and processed
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  received:
-                    type: boolean
-                    example: true
-        '400':
-          description: Bad request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '401':
-          description: Invalid signature
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '404':
-          description: Order not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '422':
-          description: Validation error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-
-  # SUBSCRIPTIONS
-  /subscriptions:
-    post:
-      tags: [Subscriptions]
-      summary: Subscribe to a plan
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [planId, paymentMethodToken]
-              properties:
-                planId:
-                  type: string
-                paymentMethodToken:
-                  type: string
-                idempotencyKey:
-                  type: string
-      responses:
-        '201':
-          description: Subscription created
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Subscription'
-        '400':
-          description: Plan unavailable or inventory reservation failed
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '409':
-          description: Already subscribed to this plan
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '422':
-          description: Validation error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '500':
-          description: Server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-
-  /subscriptions/{id}/cancel:
-    post:
-      tags: [Subscriptions]
-      summary: Cancel subscription
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Cancelled
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Subscription'
-        '400':
-          description: Bad request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '404':
-          description: Not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '409':
-          description: Already cancelled
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '422':
-          description: Validation error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '500':
-          description: Server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-
-  /subscriptions/{id}/billing-history:
-    get:
-      tags: [Subscriptions]
-      summary: Get billing attempts
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-        - $ref: '#/components/parameters/cursorParam'
-        - $ref: '#/components/parameters/limitParam'
-      responses:
-        '200':
-          description: Billing history
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        id:
-                          type: string
-                        status:
-                          type: string
-                          enum: [SUCCESS, FAILED, PENDING]
-                        amount:
-                          type: integer
-                          example: 2500000
-                        attemptNumber:
-                          type: integer
-                          example: 2
-                        chargedAt:
-                          type: string
-                          format: date-time
-                  meta:
-                    $ref: '#/components/schemas/PaginatedMeta'
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '404':
-          description: Not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '500':
-          description: Server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-
-  # DISCOUNTS
-  /discounts:
-    get:
-      tags: [Discounts]
-      summary: List discount codes and rules
-      parameters:
-        - $ref: '#/components/parameters/cursorParam'
-        - $ref: '#/components/parameters/limitParam'
-      responses:
-        '200':
-          description: Discount list
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        id:
-                          type: string
-                        code:
-                          type: string
-                          example: SAVE20
-                        type:
-                          type: string
-                          enum: [PERCENTAGE, FIXED, BUY_X_GET_Y]
-                        value:
-                          type: integer
-                        isStackable:
-                          type: boolean
-                        usageCount:
-                          type: integer
-                        expiresAt:
-                          type: string
-                          format: date-time
-                  meta:
-                    $ref: '#/components/schemas/PaginatedMeta'
-        '400':
-          description: Bad request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-
-    post:
-      tags: [Discounts]
-      summary: Create discount code or automatic rule
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [code, type, value]
-              properties:
-                code:
-                  type: string
-                  example: SUMMER10
-                type:
-                  type: string
-                  enum: [PERCENTAGE, FIXED, BUY_X_GET_Y]
-                value:
-                  type: integer
-                  description: Percentage (10 = 10%) or fixed tiyn
-                minOrderAmount:
-                  type: integer
-                  description: Minimum order in tiyn (e.g. 1500000)
-                isStackable:
-                  type: boolean
-                  default: false
-                isFirstTimeOnly:
-                  type: boolean
-                  default: false
-                expiresAt:
-                  type: string
-                  format: date-time
-      responses:
-        '201':
-          description: Discount created
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  id:
-                    type: string
-                  code:
-                    type: string
-        '400':
-          description: Bad request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '404':
-          description: Not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '409':
-          description: Discount code already exists
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '422':
-          description: Validation error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-
-  # ANALYTICS
-  /analytics/sales:
-    get:
-      tags: [Analytics]
-      summary: Sales summary (from materialized view)
-      parameters:
-        - name: from
-          in: query
-          required: true
-          schema:
-            type: string
-            format: date
-            example: "2025-01-01"
-        - name: to
-          in: query
-          required: true
-          schema:
-            type: string
-            format: date
-            example: "2025-01-31"
-      responses:
-        '200':
-          description: Sales stats
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  totalRevenue:
-                    type: integer
-                    description: In tiyn
-                    example: 45000000
-                  totalOrders:
-                    type: integer
-                    example: 142
-                  averageOrderValue:
-                    type: integer
-                    example: 316900
-                  topProducts:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        productId:
-                          type: string
-                        title:
-                          type: string
-                        revenue:
-                          type: integer
-        '400':
-          description: Invalid date range
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '404':
-          description: Not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '422':
-          description: Validation error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-
-  # THEMES
-  /themes:
-    post:
-      tags: [Themes]
-      summary: Upload theme template file
-      requestBody:
-        required: true
-        content:
-          multipart/form-data:
-            schema:
-              type: object
-              required: [file]
-              properties:
-                file:
-                  type: string
-                  format: binary
-                  description: Liquid/HTML template (sandboxed)
-                name:
-                  type: string
-      responses:
-        '201':
-          description: Theme uploaded and sandboxed
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  id:
-                    type: string
-                  name:
-                    type: string
-                  status:
-                    type: string
-                    enum: [DRAFT, PUBLISHED]
-        '400':
-          description: Invalid template file
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '404':
-          description: Not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '409':
-          description: Theme name already exists
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '422':
-          description: Template injection detected or validation error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '500':
-          description: Sandbox execution error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-
-  /themes/{id}/publish:
-    post:
-      tags: [Themes]
-      summary: Publish theme to storefront
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Theme published
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  id:
-                    type: string
-                  status:
-                    type: string
-                    example: PUBLISHED
-        '400':
-          description: Bad request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '404':
-          description: Theme not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '422':
-          description: Validation error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
+            type: object
+  responses:
+    Unauthorized:
+      description: Missing, invalid, expired, or revoked token
+      content:
+        application/json:
+          example:
+            error: Unauthorized
+            message: Invalid token
+    Forbidden:
+      description: Authenticated user has insufficient role
+      content:
+        application/json:
+          example:
+            error: 'Role CUSTOMER is not authorized. Required: MERCHANT'
+    NotFound:
+      description: Entity not found
+      content:
+        application/json:
+          example:
+            error: Product not found
+    Conflict:
+      description: Resource conflict
+      content:
+        application/json:
+          example:
+            error: Email already registered
+    ValidationError:
+      description: Request validation failed
+      content:
+        application/json:
+          example:
+            error: Validation error
+            details:
+              - field: email
+                message: Invalid email

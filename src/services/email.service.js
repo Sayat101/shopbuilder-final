@@ -2,7 +2,7 @@ const { Resend } = require('resend');
 const env = require('../config/env');
 
 const resend = new Resend(env.RESEND_API_KEY);
-const FROM = 'ShopBuilder <onboarding@resend.dev>';
+const FROM = `ShopBuilder <${env.EMAIL_FROM_ADDRESS}>`;
 
 async function sendVerificationEmail(email, token) {
   const link = `${env.FRONTEND_URL}?token=${token}`;
@@ -111,6 +111,7 @@ async function sendAbandonedCartEmail(email, itemList) {
 module.exports = {
   sendVerificationEmail,
   sendPasswordResetEmail,
+  sendMerchantOrderEmail,
   sendOrderConfirmationEmail,
   sendPaymentReceiptEmail,
   sendAbandonedCartEmail,

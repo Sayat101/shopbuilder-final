@@ -18,6 +18,7 @@ describe('Auth Endpoints', () => {
         email: testEmail,
         password: testPassword,
         role: 'MERCHANT',
+        subdomain: `merchant-${Date.now()}`,
       });
       
       expect(res.status).toBe(201);

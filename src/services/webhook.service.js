@@ -1,6 +1,7 @@
 const { prisma } = require('../config/database');
 const { NotFoundError, ConflictError } = require('../errors/AppError');
 const crypto = require('crypto');
+const { webhookQueue } = require('../workers/webhook.worker');
 
 // Зарегистрировать webhook endpoint (MERCHANT)
 async function createEndpoint(tenantId, data) {
@@ -67,6 +68,8 @@ async function testEndpoint(tenantId, endpointId) {
       attemptCount: 0,
     },
   });
+
+  await webhookQueue.add('deliver', { deliveryId: delivery.id });
 
   return { message: 'Test webhook queued', deliveryId: delivery.id };
 }

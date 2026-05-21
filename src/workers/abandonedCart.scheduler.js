@@ -26,7 +26,16 @@ if (process.env.NODE_ENV !== 'test') {
       const cutoff = new Date(Date.now() - 2 * 60 * 60 * 1000);
       const carts = await prisma.cart.findMany({
         where: { status: 'ACTIVE', updatedAt: { lt: cutoff } },
-        include: { items: true, user: true },
+        include: {
+          user: true,
+          items: {
+            include: {
+              variant: {
+                include: { product: { select: { title: true } } },
+              },
+            },
+          },
+        },
       });
       for (const cart of carts) {
         if (!cart.items.length) continue;

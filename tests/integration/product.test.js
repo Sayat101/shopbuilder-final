@@ -6,15 +6,26 @@ describe('Product Variant Matrix', () => {
   let tenantId;
 
   beforeAll(async () => {
+    const email = `merchant_${Date.now()}@test.kz`;
+    const password = 'SecurePass123!';
+
     // Register merchant
-    const reg = await request(app).post('/auth/register').send({
-      email: `merchant_${Date.now()}@test.kz`,
-      password: 'SecurePass123!',
+    await request(app).post('/auth/register').send({
+      email,
+      password,
       role: 'MERCHANT',
-      tenantId: 'test_tenant',
+      subdomain: `store-${Date.now()}`,
     });
-    merchantToken = reg.body.accessToken;
-    tenantId = reg.body.user.tenantId;
+
+    const { prisma } = require('../../src/config/database');
+    const user = await prisma.user.update({
+      where: { email },
+      data: { emailVerified: true },
+    });
+    tenantId = user.tenantId;
+
+    const login = await request(app).post('/auth/login').send({ email, password });
+    merchantToken = login.body.accessToken;
   });
 
   test('creates product with full variant matrix', async () => {

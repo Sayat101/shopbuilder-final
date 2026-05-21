@@ -75,6 +75,19 @@ app.use('/analytics', analyticsRoutes);
 app.use('/storefront', storefrontRoutes);
 app.use('/cart',      abandonedCartRoutes);
 
+// Same API under /api/* so the static frontend also works on single-service deploys.
+app.use('/api/auth',      authRoutes);
+app.use('/api/tenants',   tenantRoutes);
+app.use('/api/products',  productRoutes);
+app.use('/api/payments',  paymentRoutes);
+app.use('/api/cart',      cartRoutes);
+app.use('/api/orders',    orderRoutes);
+app.use('/api/discounts', discountRoutes);
+app.use('/api/webhooks',  webhookRoutes);
+app.use('/api/analytics', analyticsRoutes);
+app.use('/api/storefront', storefrontRoutes);
+app.use('/api/cart',      abandonedCartRoutes);
+
 // 404 handler
 app.use((req, res) => {
   res.status(404).json({ error: 'Route not found' });

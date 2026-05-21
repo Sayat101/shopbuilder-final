@@ -95,13 +95,19 @@ async function updateProductStatus(id, tenantId, status) {
  * Update inventory level for a specific variant + location.
  * Uses SELECT FOR UPDATE pattern via Prisma transaction to prevent race conditions.
  */
-async function adjustInventory({ variantId, locationId, quantity }) {
+async function adjustInventory({ variantId, locationId, quantity, tenantId }) {
   return prisma.$transaction(async (tx) => {
     const level = await tx.inventoryLevel.findUnique({
       where: { variantId_locationId: { variantId, locationId } },
+      include: {
+        variant: { include: { product: { select: { tenantId: true } } } },
+      },
     });
 
     if (!level) throw new NotFoundError('Inventory level not found');
+    if (tenantId && level.variant.product.tenantId !== tenantId) {
+      throw new NotFoundError('Inventory level not found');
+    }
 
     const newAvailable = level.available + quantity;
     if (newAvailable < 0) throw new Error('Insufficient stock');

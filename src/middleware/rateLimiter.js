@@ -4,7 +4,7 @@ function rateLimitAuth(req, res, next) {
   const key = req.ip;
   const now = Date.now();
   const windowMs = 60 * 1000;
-  const max = 5;
+  const max = 50; // увеличили с 5 до 50
 
   if (!requests.has(key)) {
     requests.set(key, []);
@@ -15,7 +15,7 @@ function rateLimitAuth(req, res, next) {
   if (timestamps.length >= max) {
     return res.status(429).json({
       error: 'Too many requests',
-      message: 'Max 5 attempts per minute. Try again later.',
+      message: 'Try again later.',
       retryAfter: 60,
     });
   }

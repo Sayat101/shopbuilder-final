@@ -3,10 +3,13 @@ const { prisma } = require('../config/database');
 const env = require('../config/env');
 const fetch = require('node-fetch');
 const crypto = require('crypto');
+
 const connection = {
   host: new URL(env.REDIS_URL).hostname,
   port: parseInt(new URL(env.REDIS_URL).port) || 6379,
   maxRetriesPerRequest: null,
+  enableReadyCheck: false,
+  tls: env.REDIS_URL.startsWith('rediss://') ? { rejectUnauthorized: false } : undefined,
 };
 
 const webhookQueue = new Queue('webhooks', { connection });

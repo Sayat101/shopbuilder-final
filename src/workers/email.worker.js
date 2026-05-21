@@ -6,6 +6,8 @@ const connection = {
   host: new URL(env.REDIS_URL).hostname,
   port: parseInt(new URL(env.REDIS_URL).port) || 6379,
   maxRetriesPerRequest: null,
+  enableReadyCheck: false,
+  tls: env.REDIS_URL.startsWith('rediss://') ? { rejectUnauthorized: false } : undefined,
 };
 
 // ─── EMAIL QUEUE ──────────────────────────────────────────────

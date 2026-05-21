@@ -1,0 +1,5 @@
+.env
+.env.local
+node_modules
+shopbuilder/node_modules
+*.log

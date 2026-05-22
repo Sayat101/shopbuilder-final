@@ -4,8 +4,6 @@
  *
  * Requires DATABASE_URL in environment (or .env file).
  */
-
-require('dotenv').config();
 const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcryptjs');
 

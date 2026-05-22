@@ -104,6 +104,18 @@
       font-size: 11px; font-weight: bold;
     }
     .badge-blue { background: #d1ecf1; color: #0c5460; }
+    .store-card { cursor: pointer; border: 2px solid transparent; }
+    .store-card:hover { border-color: #1a1a2e; }
+    .store-card.active { border-color: #27ae60; background: #f6fff9; }
+    .variant-row {
+      display: grid; grid-template-columns: 1fr 82px; gap: 8px;
+      align-items: end; margin: 10px 0;
+    }
+    .variant-row select, .variant-row input {
+      width: 100%; padding: 9px; border: 1px solid #ddd;
+      border-radius: 6px; font-size: 13px;
+    }
+    .muted { font-size: 12px; color: #777; }
   </style>
 </head>
 <body>
@@ -180,6 +192,36 @@
         <input type="text" id="regSubdomain" placeholder="my-store" />
       </div>
       <button type="button" class="btn btn-primary" onclick="register()">Register</button>
+    </div>
+  </div>
+
+  <!-- VERIFY PANEL -->
+  <div id="verifyPanel" style="display:none">
+    <div class="card" style="max-width:480px;margin:0 auto;text-align:center;padding:40px 30px">
+      <div id="verifyIcon" style="font-size:56px;margin-bottom:16px">📧</div>
+      <h2 id="verifyTitle" style="margin-bottom:12px;color:#1a1a2e">Подтвердите Email</h2>
+      <p id="verifyMsg" style="color:#666;margin-bottom:24px;font-size:14px;line-height:1.6">
+        Мы отправили письмо на вашу почту.<br>
+        Скопируйте токен из письма и вставьте сюда, или нажмите ссылку в письме.
+      </p>
+      <div id="verifyAlert" style="margin-bottom:16px"></div>
+      <div class="form-group" style="text-align:left">
+        <label style="font-size:13px;color:#555">Токен из письма</label>
+        <input type="text" id="verifyTokenInput" placeholder="Вставьте токен здесь..." style="font-family:monospace;font-size:13px" />
+      </div>
+      <button type="button" class="btn btn-primary" onclick="submitVerifyToken()" id="verifySubmitBtn" style="width:100%;margin-bottom:10px">
+        ✅ Подтвердить Email
+      </button>
+      <div id="verifyEmailGroup" class="form-group" style="text-align:left;margin-top:16px;padding-top:16px;border-top:1px solid #eee">
+        <label style="font-size:13px;color:#555">Не пришло письмо? Отправить повторно</label>
+        <input type="email" id="verifyEmailInput" placeholder="ваш@email.com" />
+        <button type="button" class="btn" onclick="resendVerification()" style="width:100%;margin-top:8px;background:#f0f0f0;color:#333;border:1px solid #ddd">
+          🔄 Отправить письмо повторно
+        </button>
+      </div>
+      <button type="button" onclick="showAuthPanel()" style="background:none;border:none;color:#999;font-size:13px;cursor:pointer;margin-top:16px">
+        ← Вернуться к входу
+      </button>
     </div>
   </div>
 
@@ -309,13 +351,16 @@
 
     <div id="tab-storefront" class="panel">
       <div class="card">
-        <h2>Public Storefront</h2>
-        <p style="font-size:13px;color:#666;margin-bottom:10px">Enter merchant subdomain, then browse and add to cart.</p>
+        <h2>Shop Stores</h2>
+        <p style="font-size:13px;color:#666;margin-bottom:10px">Choose an available merchant store below, or paste a direct subdomain if the examiner gives one.</p>
+        <div id="storeDirectory" class="grid" style="margin-bottom:15px"></div>
         <div class="form-group">
-          <label>Store Subdomain</label>
+          <label>Direct Store Subdomain</label>
           <input type="text" id="storefrontSubdomain" placeholder="my-store" data-tenant-id="" />
         </div>
-        <button type="button" class="btn btn-primary" onclick="loadStorefront()">View Store</button>
+        <button type="button" class="btn btn-primary" onclick="loadStorefront()">Open Store</button>
+        <button type="button" class="btn" onclick="loadStoreDirectory()" style="background:#f0f0f0;color:#333;border:1px solid #ddd">Refresh Stores</button>
+        <div id="selectedStoreSummary" class="alert alert-info" style="display:none;margin-top:15px"></div>
         <div id="storefrontContent" style="margin-top:15px" class="grid"></div>
       </div>
     </div>
@@ -367,18 +412,81 @@
   let refreshToken = localStorage.getItem('refreshToken') || '';
   let currentUser = JSON.parse(localStorage.getItem('user') || 'null');
   let selectedStoreTenantId = localStorage.getItem('selectedStoreTenantId') || '';
+  let selectedStoreSubdomain = localStorage.getItem('selectedStoreSubdomain') || '';
 
-  if (verifyToken) {
-    fetch(API + '/auth/verify-email?token=' + encodeURIComponent(verifyToken))
-      .then(r => r.json())
-      .then(data => {
-        document.getElementById('alertBox').innerHTML =
-          `<div class="alert alert-success">✅ ${data.message || 'Email verified! You can now login.'}</div>`;
-      })
-      .catch(() => {
-        document.getElementById('alertBox').innerHTML =
-          `<div class="alert alert-error">❌ Verification failed. Link may be expired.</div>`;
+  // ── VERIFY PANEL FUNCTIONS ──
+  function showVerifyPanel(token) {
+    document.getElementById('authPanel').style.display = 'none';
+    document.getElementById('verifyPanel').style.display = 'block';
+    document.getElementById('mainPanel').style.display = 'none';
+    if (token) document.getElementById('verifyTokenInput').value = token;
+    document.getElementById('verifyIcon').textContent = '📧';
+    document.getElementById('verifyTitle').textContent = 'Подтвердите Email';
+  }
+
+  function showAuthPanel() {
+    document.getElementById('authPanel').style.display = 'block';
+    document.getElementById('verifyPanel').style.display = 'none';
+    document.getElementById('mainPanel').style.display = 'none';
+  }
+
+  async function submitVerifyToken() {
+    const token = document.getElementById('verifyTokenInput').value.trim();
+    if (!token) {
+      document.getElementById('verifyAlert').innerHTML = '<div class="alert alert-error">Введите токен из письма</div>';
+      return;
+    }
+    document.getElementById('verifySubmitBtn').textContent = 'Проверяем...';
+    document.getElementById('verifySubmitBtn').disabled = true;
+    try {
+      const res = await fetch(API + '/auth/verify-email?token=' + encodeURIComponent(token));
+      const data = await res.json();
+      if (res.ok) {
+        document.getElementById('verifyIcon').textContent = '✅';
+        document.getElementById('verifyTitle').textContent = 'Email подтверждён!';
+        document.getElementById('verifyMsg').textContent = data.message || 'Теперь вы можете войти в систему.';
+        document.getElementById('verifyAlert').innerHTML = '';
+        document.getElementById('verifySubmitBtn').style.display = 'none';
+        document.getElementById('verifyEmailGroup').style.display = 'none';
+        setTimeout(() => {
+          showAuthPanel();
+          switchAuthTab('login', document.querySelector('#authPanel .tab'));
+          showAlert('Email подтверждён! Теперь войдите в систему.', 'success');
+        }, 2000);
+      } else {
+        document.getElementById('verifyAlert').innerHTML = '<div class="alert alert-error">❌ ' + (data.message || 'Неверный или просроченный токен') + '</div>';
+        document.getElementById('verifySubmitBtn').textContent = '✅ Подтвердить Email';
+        document.getElementById('verifySubmitBtn').disabled = false;
+      }
+    } catch (e) {
+      document.getElementById('verifyAlert').innerHTML = '<div class="alert alert-error">❌ Ошибка сервера. Попробуйте ещё раз.</div>';
+      document.getElementById('verifySubmitBtn').textContent = '✅ Подтвердить Email';
+      document.getElementById('verifySubmitBtn').disabled = false;
+    }
+  }
+
+  async function resendVerification() {
+    const email = document.getElementById('verifyEmailInput').value.trim();
+    if (!email) {
+      document.getElementById('verifyAlert').innerHTML = '<div class="alert alert-error">Введите email</div>';
+      return;
+    }
+    try {
+      await fetch(API + '/auth/resend-verification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
       });
+      document.getElementById('verifyAlert').innerHTML = '<div class="alert alert-success">📧 Письмо отправлено повторно! Проверьте почту.</div>';
+    } catch (e) {
+      document.getElementById('verifyAlert').innerHTML = '<div class="alert alert-error">Не удалось отправить письмо</div>';
+    }
+  }
+
+  // Auto-handle token from URL
+  if (verifyToken) {
+    showVerifyPanel(verifyToken);
+    submitVerifyToken();
   }
 
   if (resetToken) {
@@ -427,6 +535,25 @@
       throw new Error(data.message || data.error || ('Request failed (' + res.status + ')'));
     }
     return data;
+  }
+
+  function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, ch => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;',
+    }[ch]));
+  }
+
+  function formatMoney(tiyn) {
+    return ((Number(tiyn) || 0) / 100).toFixed(0) + ' ₸';
+  }
+
+  function variantLabel(variant) {
+    const options = [variant.option1Value, variant.option2Value, variant.option3Value].filter(Boolean);
+    return (options.length ? options.join(' / ') : variant.sku) + ' · ' + variant.sku;
+  }
+
+  function availableForVariant(variant) {
+    return (variant.inventory || []).reduce((sum, inv) => sum + inv.available - inv.reserved, 0);
   }
 
   function switchAuthTab(tab, el) {
@@ -501,7 +628,10 @@
         body.subdomain = document.getElementById('regSubdomain').value;
       }
       await api('POST', '/auth/register', body);
-      showAlert('Registered! Check your email to verify your account.', 'success');
+      // Show verify panel
+      document.getElementById('verifyEmailInput').value = body.email;
+      showVerifyPanel('');
+      showAlert('Зарегистрировались! Проверьте почту и вставьте токен из письма.', 'success');
     } catch (err) {
       showAlert(err.message, 'error');
     }
@@ -575,6 +705,7 @@
     if (tabId === 'products') loadProducts();
     if (tabId === 'orders') loadOrders();
     if (tabId === 'cart') loadCart();
+    if (tabId === 'storefront') loadStoreDirectory();
     if (tabId === 'discounts') loadDiscounts();
     if (tabId === 'webhooks') loadWebhooks();
     if (tabId === 'abandoned') loadAbandonedCarts();
@@ -774,7 +905,7 @@
     try {
       const tenantId = getOrderTenantId();
       if (!tenantId || tenantId === 'platform') {
-        throw new Error('Open a store first (Browse Store tab) and enter merchant subdomain');
+        throw new Error('Choose a store first in Browse Store');
       }
       const data = await api('POST', '/orders', {
         tenantId,
@@ -923,20 +1054,62 @@
     }
   }
 
-  async function loadStorefront() {
-    try {
-      const subdomain = document.getElementById('storefrontSubdomain').value.trim();
-      if (!subdomain) throw new Error('Enter store subdomain');
+  async function loadStoreDirectory() {
+    const directory = document.getElementById('storeDirectory');
+    if (!directory) return;
 
-      const store = await api('GET', '/storefront/' + subdomain);
+    try {
+      const data = await api('GET', '/storefront?limit=20');
+      const stores = data.data || [];
+
+      if (!stores.length) {
+        directory.innerHTML = '<p style="color:#888">No active merchant stores yet. Register as Merchant first and publish a product.</p>';
+        return;
+      }
+
+      directory.innerHTML = stores.map(store => `
+        <div class="product-card store-card ${store.id === selectedStoreTenantId ? 'active' : ''}" onclick="loadStorefront('${escapeHtml(store.subdomain)}')">
+          <h3>${escapeHtml(store.subdomain)}</h3>
+          <p class="muted">Plan: ${escapeHtml(store.plan)}</p>
+          <button type="button" class="btn btn-primary" style="font-size:12px">Open Store</button>
+        </div>
+      `).join('');
+
+      if (selectedStoreSubdomain) {
+        document.getElementById('storefrontSubdomain').value = selectedStoreSubdomain;
+      }
+    } catch (err) {
+      directory.innerHTML = '<p style="color:#888">Store directory is unavailable. You can still paste a direct subdomain below.</p>';
+    }
+  }
+
+  async function loadStorefront(subdomainOverride) {
+    try {
+      const subdomain = (subdomainOverride || document.getElementById('storefrontSubdomain').value).trim();
+      if (!subdomain) throw new Error('Choose a store or enter its subdomain');
+
+      const store = await api('GET', '/storefront/' + encodeURIComponent(subdomain));
       const tenantId = store.tenant?.id;
       if (!tenantId) throw new Error('Store not found');
 
-      document.getElementById('storefrontSubdomain').dataset.tenantId = tenantId;
+      const input = document.getElementById('storefrontSubdomain');
+      input.value = subdomain;
+      input.dataset.tenantId = tenantId;
       selectedStoreTenantId = tenantId;
+      selectedStoreSubdomain = subdomain;
       localStorage.setItem('selectedStoreTenantId', tenantId);
+      localStorage.setItem('selectedStoreSubdomain', subdomain);
 
-      const data = await api('GET', '/storefront/' + subdomain + '/products?limit=20');
+      const summary = document.getElementById('selectedStoreSummary');
+      summary.style.display = 'block';
+      summary.textContent = 'Shopping in store: ' + subdomain + '. Pick exact variant and quantity before adding to cart.';
+
+      document.querySelectorAll('.store-card').forEach(card => card.classList.remove('active'));
+      document.querySelectorAll('.store-card').forEach(card => {
+        if (card.textContent.includes(subdomain)) card.classList.add('active');
+      });
+
+      const data = await api('GET', '/storefront/' + encodeURIComponent(subdomain) + '/products?limit=20');
       const content = document.getElementById('storefrontContent');
 
       if (!data.data || data.data.length === 0) {
@@ -944,17 +1117,8 @@
         return;
       }
 
-      content.innerHTML = data.data.map(p => `
-        <div class="product-card">
-          <h3>${p.title}</h3>
-          <div class="price">${p.variants?.[0]?.price ? (p.variants[0].price / 100).toFixed(0) + ' ₸' : 'N/A'}</div>
-          <p style="font-size:12px;color:#888">${p.variants?.length || 0} variants</p>
-          ${p.variants?.[0] ? `
-            <button type="button" class="btn btn-primary" style="font-size:12px"
-              onclick="addToCart('${p.variants[0].id}')">Add to Cart</button>
-          ` : ''}
-        </div>
-      `).join('');
+      content.innerHTML = data.data.map(renderStorefrontProduct).join('');
+      data.data.forEach(p => updateVariantPreview(p.id));
 
       showAlert('Store loaded: ' + subdomain, 'success');
     } catch (err) {
@@ -962,15 +1126,88 @@
     }
   }
 
-  async function addToCart(variantId) {
+  function renderStorefrontProduct(product) {
+    const variants = product.variants || [];
+    const firstAvailable = variants.find(v => availableForVariant(v) > 0) || variants[0];
+    const firstPrice = firstAvailable ? firstAvailable.price : 0;
+
+    return `
+      <div class="product-card">
+        <h3>${escapeHtml(product.title)}</h3>
+        <p class="muted" style="margin-bottom:8px">${escapeHtml(product.description || 'No description')}</p>
+        <div class="price" id="price-${product.id}">${firstAvailable ? formatMoney(firstPrice) : 'N/A'}</div>
+        <p class="muted">${variants.length} variants</p>
+        ${variants.length ? `
+          <div class="variant-row">
+            <div>
+              <label class="muted">Choose exact SKU</label>
+              <select id="variant-${product.id}" onchange="updateVariantPreview('${product.id}')">
+                ${variants.map(v => {
+                  const available = availableForVariant(v);
+                  return `<option value="${v.id}" data-price="${v.price}" data-stock="${available}" ${available <= 0 ? 'disabled' : ''}>
+                    ${escapeHtml(variantLabel(v))} (${available} available)
+                  </option>`;
+                }).join('')}
+              </select>
+            </div>
+            <div>
+              <label class="muted">Qty</label>
+              <input type="number" id="qty-${product.id}" min="1" value="1" />
+            </div>
+          </div>
+          <p class="muted" id="stock-${product.id}"></p>
+          <button type="button" class="btn btn-primary" style="font-size:12px" onclick="addSelectedVariant('${product.id}')">Add Selected</button>
+        ` : '<p class="muted">No variants available.</p>'}
+      </div>
+    `;
+  }
+
+  function updateVariantPreview(productId) {
+    const select = document.getElementById('variant-' + productId);
+    if (!select || !select.selectedOptions.length) return;
+
+    const selected = select.selectedOptions[0];
+    const stock = Number(selected.dataset.stock || 0);
+    const price = Number(selected.dataset.price || 0);
+    const qty = document.getElementById('qty-' + productId);
+
+    document.getElementById('price-' + productId).textContent = formatMoney(price);
+    document.getElementById('stock-' + productId).textContent = stock > 0
+      ? stock + ' units available for selected SKU'
+      : 'Selected SKU is out of stock';
+
+    if (qty) {
+      qty.max = Math.max(1, stock);
+      if (Number(qty.value || 1) > stock && stock > 0) qty.value = stock;
+    }
+  }
+
+  async function addSelectedVariant(productId) {
     try {
-      await api('POST', '/cart/items', { variantId, quantity: 1 });
-      showAlert('Added to cart!', 'success');
+      const select = document.getElementById('variant-' + productId);
+      const qtyInput = document.getElementById('qty-' + productId);
+      if (!select || !select.value) throw new Error('Choose an available SKU first');
+
+      const stock = Number(select.selectedOptions[0]?.dataset.stock || 0);
+      const quantity = Math.max(1, parseInt(qtyInput?.value || '1', 10));
+      if (stock <= 0) throw new Error('Selected SKU is out of stock');
+      if (quantity > stock) throw new Error('Only ' + stock + ' units available for this SKU');
+
+      await addToCart(select.value, quantity);
     } catch (err) {
       showAlert(err.message, 'error');
     }
   }
 
+  async function addToCart(variantId, quantity = 1) {
+    try {
+      await api('POST', '/cart/items', { variantId, quantity });
+      showAlert('Added selected SKU to cart!', 'success');
+      loadCart();
+    } catch (err) {
+      showAlert(err.message, 'error');
+    }
+  }
   async function createWebhook() {
     try {
       const data = await api('POST', '/webhooks/endpoints', {

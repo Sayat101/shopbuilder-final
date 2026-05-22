@@ -1,5 +1,14 @@
 const storefrontService = require('../services/storefront.service');
 
+async function listStores(req, res, next) {
+  try {
+    const result = await storefrontService.listStorefronts(req.query);
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+}
+
 async function getStore(req, res, next) {
   try {
     const result = await storefrontService.getStorefront(req.params.subdomain);
@@ -33,4 +42,4 @@ async function getProduct(req, res, next) {
   }
 }
 
-module.exports = { getStore, getProducts, getProduct };
+module.exports = { listStores, getStore, getProducts, getProduct };

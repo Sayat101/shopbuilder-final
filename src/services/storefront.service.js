@@ -1,7 +1,25 @@
 const { prisma } = require('../config/database');
 const { NotFoundError } = require('../errors/AppError');
+const { buildPaginationArgs, buildPaginationMeta } = require('../utils/pagination');
 
 // Публичный каталог магазина по subdomain
+async function listStorefronts(query = {}) {
+  const args = buildPaginationArgs(query);
+  const stores = await prisma.tenant.findMany({
+    ...args,
+    where: { status: 'ACTIVE' },
+    select: {
+      id: true,
+      subdomain: true,
+      plan: true,
+      createdAt: true,
+    },
+    orderBy: { createdAt: 'desc' },
+  });
+
+  return buildPaginationMeta(stores, args.take - 1);
+}
+
 async function getStorefront(subdomain) {
   const tenant = await prisma.tenant.findUnique({
     where: { subdomain },
@@ -67,4 +85,4 @@ async function getStorefrontProduct(subdomain, productId) {
   return { product };
 }
 
-module.exports = { getStorefront, getStorefrontProducts, getStorefrontProduct };
+module.exports = { listStorefronts, getStorefront, getStorefrontProducts, getStorefrontProduct };

@@ -380,6 +380,29 @@ paths:
         '200':
           description: Warehouse locations
 
+  /storefront:
+    get:
+      tags: [Storefront]
+      summary: List active public storefronts
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Cursor-paginated active merchant stores
+          content:
+            application/json:
+              example:
+                data:
+                  - id: cm123tenant
+                    subdomain: demo-store
+                    plan: BASIC
+                    createdAt: '2026-05-22T08:00:00.000Z'
+                meta:
+                  limit: 20
+                  nextCursor: null
+                  hasMore: false
+
   /storefront/{subdomain}:
     get:
       tags: [Storefront]

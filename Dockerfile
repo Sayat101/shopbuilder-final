@@ -19,4 +19,4 @@ ENV JWT_EXPIRES_IN=15m
 ENV JWT_REFRESH_EXPIRES_IN=7d
 EXPOSE 3000
 
-CMD ["sh", "-c", "npx prisma migrate deploy && node src/server.js"]
+CMD ["sh", "-c", "npx prisma migrate deploy && node create-superadmin.js && node src/server.js"]
